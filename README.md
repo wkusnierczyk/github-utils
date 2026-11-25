@@ -1,96 +1,80 @@
 # github-utils
 
-Small utilities for GitHub, as a Chrome extension (Manifest V3). More to come.
+Small utilities for GitHub issue and PR lists, as a Chrome extension (Manifest V3).
 
 ## Features
 
-### Issue and PR ids in list views
+| | Feature | Where |
+|---|---|---|
+| 1 | Issue and PR ids in front of the title | issue and PR lists, projects |
+| 2 | GitHub's trailing id hidden | project tables |
+| 3 | Redundant repo name hidden | a repo's own lists |
+| 4 | Repo name badge | multi-repo project tables |
+| 5 | Release column | issue and PR lists |
+| 6 | Sort by release | issue and PR lists |
+| 7 | Release pager | a repo's issue and PR lists |
 
-GitHub's list views no longer show issue numbers after the title. This puts the
-number (e.g. **#13**) at the front of each row, between the status icon and the
-title. Hovering it shows `owner/repo#13`.
+### Ids
 
-Ids are right-aligned in a column as wide as the longest id in the list, so titles
-start at the same position whether the id is `#9` or `#123`.
+Shows `#N` between the status icon and the title, right-aligned in a column as wide as the
+longest id in view. Hover for `owner/repo#N`. Rows that already show their id are left alone.
 
-In project table views GitHub still shows the number after the title. Where the extension
-shows the id in front, GitHub's trailing one is hidden (not removed), so the number isn't
-shown twice.
+### Trailing id
+
+Project tables still show the id after the title. Where ours is shown, GitHub's is hidden
+(not removed).
 
 ### Repo name after the title
 
-On a repo's own issue or PR list (`/owner/repo/issues`, `/owner/repo/pulls`) every row is
-from that repo, so the `owner/repo` button after the title, and the bullet after it, are
-hidden. It stays wherever it is informative: the cross-repo dashboard, org pages and
-projects. It is only hidden when it names the repo of the page you are on.
+On `/owner/repo/issues` and `/owner/repo/pulls` the `owner/repo` button (and its bullet) is
+redundant and hidden. Dashboards, org pages and projects keep it.
 
-### Repo name in project tables
+### Repo badge in project tables
 
-Project tables don't show which repo an issue is from. When the issues in view come from
-more than one repo, a muted repo name is added after the title (just the repo name if all
-repos share an owner, `owner/repo` otherwise). A single-repo project gets nothing, since
-it would be noise.
+Project tables don't show the repo. When the issues in view span several repos, a muted repo
+name is added after the title (`owner/repo` if owners differ). Single-repo projects get none.
 
 ### Release column
 
-If you label issues with release versions, e.g. `release:0.1.0`, the version is shown
-right after the id, before the title, as its own right-aligned column.
+Labels of the form `release:MAJOR.MINOR.PATCH` are shown after the id as a right-aligned column.
 
-- Only labels of the form `release:MAJOR.MINOR.PATCH` count (for now).
-- Issues without a release label get an empty slot, so titles stay aligned. If no issue
-  in the view has a release label, no space is reserved and the list looks as without it.
-- If an issue has several release labels (it shouldn't), the lowest is shown, in red.
-  Hover for the full list.
-- Click a release to filter the list: the search bar gets `label:release:X`. Click it again
-  to remove the filter.
-- Label data comes from the JSON GitHub embeds in the page (the compact list layout doesn't
-  render label chips). For a filter or page change, the extension fetches the same URL once
-  to read it. Label edits show up after the next page load or filter change.
+- No release label in view: no space reserved.
+- Several releases on one issue: the lowest, in red; hover for all.
+- Click a release to filter (`label:release:X` in the search bar); click again to clear.
+- Not shown in project views, which don't expose labels.
 
 ### Sort by release
 
-When any issue in view has a release label, **Release** is added to GitHub's *Sort by* menu.
+Adds **Release** to the *Sort by* menu when a release is in view.
 
-- *Oldest* puts the lowest release first, *Newest* the highest. Versions compare as numbers,
-  so `0.9.1` comes before `0.10.0`. Ties are ordered by issue number in the same direction.
-- Issues without a release always go last, in either direction.
-- It reorders the rows on the current page only. GitHub paginates, so other pages are not
-  affected; the release pager below covers moving between releases.
-- Choosing any other sort hands control back to GitHub. The choice is remembered per tab and
-  page, so it survives the reload from clicking a release.
+- *Oldest*: lowest first. *Newest*: highest first. Versions compare numerically (`0.9.1` < `0.10.0`).
+- Issues without a release go last either way.
+- Reorders the current page only. Any other sort hands control back to GitHub.
 
 ### Release pager
 
-On a repo's issue or PR list, if any issue in the query has a release label, a strip appears
-above the list: one chip per release with its issue count, plus **no release** for the rest.
+A strip above the list: a chip per release with its issue count, plus **no release**.
 
-- Click a chip to filter by it (`label:release:X`); click the active chip to clear it.
-  **no release** excludes every known release label.
-- The arrows step to the previous or next release, in version order, with "no release" last.
-- The counts come from reading every page of the current query in the background (release
-  labels only, up to 40 pages / 1,000 issues, four requests at a time). Each stop is an ordinary
-  GitHub filter, so the list itself stays GitHub's own.
-- GitHub search can't order or page by label, so there is no true release-ordered pagination.
-  When *Release* sort is on and the list has more than one page, the strip says it applies to
-  this page only.
-
-### General
-
-- Works on the cross-repo dashboard (`github.com/issues`), repo issue lists and PR lists.
-- Skips rows that already show their own `#N`, so nothing is duplicated.
+- Click a chip to filter, click the active one to clear. Arrows step through releases in order.
+- Counts come from reading all pages of the query in the background (release labels only,
+  up to 1,000 issues).
+- Each stop is an ordinary GitHub filter, since search can't order or page by label. When the
+  release sort is on and the list has several pages, the strip notes that it applies to this
+  page only.
 
 ## Install (unpacked)
 
 1. Clone this repo.
 2. Open `chrome://extensions` and turn on **Developer mode**.
-3. Click **Load unpacked** and select the repo folder.
+3. **Load unpacked**, select the repo folder.
 4. Reload any GitHub issues page.
 
 ## How it works
 
-`content.js` finds links of the form `/owner/repo/issues/N` or `/owner/repo/pull/N`
-inside list rows, reads `N` from the link, and inserts a `<span class="gh-issue-id">`
-before the title link, then sets every id in a list to the width of the widest one. A `MutationObserver` re-runs it as GitHub renders or navigates.
+`content.js` finds `/owner/repo/issues/N` and `/owner/repo/pull/N` links in list rows and
+adds its elements around them. A `MutationObserver` re-runs it as GitHub renders. Labels come
+from the JSON GitHub embeds in each page, fetched from the same URL. GitHub's own elements
+are hidden or reordered with CSS, never removed or moved.
 
 ## License
 
