@@ -510,36 +510,32 @@
             span.dataset.ghCrit = c.name;
             e.a.parentNode.insertBefore(span, e.a);
           }
-          const lowest = labels[0] || "";
-          const text = lowest ? valueOf(c, lowest) : "";
-          const multi = labels.length > 1;
-          // The value is a pill in the label's own colours, as wide as its text; the
-          // column's alignment positions it.
-          const color = lowest ? labelColors.get(e.repo.toLowerCase() + "/" + lowest) || "" : "";
-          const look = text + "|" + color + "|" + dark;
+          // One pill per label, in the label's own colours and as wide as its text,
+          // ordered by value; the column's alignment positions them. An issue with
+          // several labels of this criterion shows all of them.
+          const look =
+            labels
+              .map((l) => l + "|" + (labelColors.get(e.repo.toLowerCase() + "/" + l) || ""))
+              .join("\n") +
+            "|" +
+            dark;
           if (span.dataset.ghLook !== look) {
             span.dataset.ghLook = look;
             span.textContent = "";
-            if (text) {
+            for (const l of labels) {
+              const text = valueOf(c, l);
               const pill = document.createElement("span");
               pill.className = COL_CLASS + "__pill";
               pill.textContent = text;
-              const st = pillStyle(color, dark);
+              pill.dataset.ghLabel = l;
+              pill.title = "Filter by " + c.name + " " + text;
+              const st = pillStyle(labelColors.get(e.repo.toLowerCase() + "/" + l), dark);
               if (st) Object.assign(pill.style, st);
               else pill.classList.add(COL_CLASS + "__pill--plain");
               span.append(pill);
             }
           }
           if (span.dataset.ghAlign !== c.align) span.dataset.ghAlign = c.align;
-          if (span.dataset.ghLabel !== lowest) span.dataset.ghLabel = lowest;
-          span.classList.toggle(COL_CLASS + "--multi", multi);
-          const title = !lowest
-            ? ""
-            : multi
-            ? "Several " + c.name + " values: " + labels.map((l) => valueOf(c, l)).join(", ") +
-              " (showing the lowest). Click to filter."
-            : "Filter by " + c.name + " " + text;
-          if (span.title !== title) span.title = title;
           spans.push(span);
         }
         fitWidth(list, spans, "ghColSig" + i);
@@ -601,17 +597,18 @@
     location.assign(u.href);
   }
 
-  // Clicking a value in a column toggles its filter.
+  // Clicking a value pill toggles its filter.
   document.addEventListener(
     "click",
     (e) => {
-      const el = e.target.closest && e.target.closest("." + COL_CLASS);
-      if (!el || !el.dataset.ghLabel) return;
-      const c = criteria.find((x) => x.name === el.dataset.ghCrit);
+      const pill = e.target.closest && e.target.closest("." + COL_CLASS + "__pill");
+      const col = pill && pill.closest("." + COL_CLASS);
+      if (!pill || !col || !pill.dataset.ghLabel) return;
+      const c = criteria.find((x) => x.name === col.dataset.ghCrit);
       if (!c) return;
       e.preventDefault();
       e.stopPropagation();
-      goToSelection(c, currentSelection(c) === el.dataset.ghLabel ? "" : el.dataset.ghLabel);
+      goToSelection(c, currentSelection(c) === pill.dataset.ghLabel ? "" : pill.dataset.ghLabel);
     },
     true
   );

@@ -55,22 +55,22 @@
   line-height: inherit;
 }
 
-.gh-issue-col:not(:empty):hover .gh-issue-col__pill {
+.gh-issue-col__pill {
+  cursor: pointer;
+}
+
+.gh-issue-col__pill:hover {
   filter: brightness(0.9);
 }
 
-.gh-issue-col:not(:empty):hover .gh-issue-col__pill--plain {
+.gh-issue-col__pill--plain:hover {
   filter: none;
   text-decoration: underline;
 }
 
-/* More than one matching label on the issue: the lowest is shown, marked in red. */
-.gh-issue-col--multi {
-  color: var(--fgColor-danger, #d1242f);
-}
-
-.gh-issue-col--multi .gh-issue-col__pill:not(.gh-issue-col__pill--plain) {
-  border-color: var(--fgColor-danger, #d1242f) !important;
+/* Several values of one criterion on an issue: all shown, side by side. */
+.gh-issue-col__pill + .gh-issue-col__pill {
+  margin-left: 4px;
 }
 
 /* GitHub's own id after the title, hidden where we show ours in front. */

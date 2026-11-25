@@ -44,7 +44,7 @@ A criterion picks out one kind of label, e.g. `release:0.1.0`, `worker:agent`,
 
 - **A column** (if its *Column* switch is on) between the id and the title, in settings order,
   aligned as set (right by default). Each value is a pill in the original label's colours
-  (light and dark themes), only as wide as its text. Rows without a value stay empty; a
+  (light and dark themes), only as wide as its text; an issue with several values of one criterion gets one pill per value. Rows without a value stay empty; a
   criterion with no value in view reserves no space. Not shown in project views, which don't
   expose labels.
 - **Click-to-filter** on the column's values: click one to add `label:...` to the search bar,
@@ -60,7 +60,7 @@ A criterion picks out one kind of label, e.g. `release:0.1.0`, `worker:agent`,
   filter, since search can't order or page by label. When the criterion's sort is on and the
   list has several pages, the strip notes that it applies to this page only.
 
-An issue with several labels of one criterion shows the lowest, outlined in red; hover for all.
+An issue with several labels of one criterion shows all of them, side by side in the column, ordered by value; each pill filters on its own. Sorting uses the lowest.
 
 ## Settings
 
