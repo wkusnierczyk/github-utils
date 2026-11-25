@@ -9,3 +9,27 @@
   white-space: nowrap;
   user-select: text;
 }
+
+.gh-issue-release {
+  display: inline-block;
+  box-sizing: border-box;
+  margin-right: 6px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--fgColor-accent, #0969da);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.gh-issue-release:empty {
+  cursor: default;
+}
+
+.gh-issue-release:not(:empty):hover {
+  text-decoration: underline;
+}
+
+/* More than one release label on the issue: the lowest is shown, in red. */
+.gh-issue-release--multi {
+  color: var(--fgColor-danger, #d1242f);
+}

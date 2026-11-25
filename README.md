@@ -13,6 +13,24 @@ title. Hovering it shows `owner/repo#13`.
 Ids are right-aligned in a column as wide as the longest id in the list, so titles
 start at the same position whether the id is `#9` or `#123`.
 
+### Release column
+
+If you label issues with release versions, e.g. `release:0.1.0`, the version is shown
+right after the id, before the title, as its own right-aligned column.
+
+- Only labels of the form `release:MAJOR.MINOR.PATCH` count (for now).
+- Issues without a release label get an empty slot, so titles stay aligned. If no issue
+  in the view has a release label, no space is reserved and the list looks as without it.
+- If an issue has several release labels (it shouldn't), the lowest is shown, in red.
+  Hover for the full list.
+- Click a release to filter the list: the search bar gets `label:release:X`. Click it again
+  to remove the filter.
+- Label data comes from the JSON GitHub embeds in the page (the compact list layout doesn't
+  render label chips). For a filter or page change, the extension fetches the same URL once
+  to read it. Label edits show up after the next page load or filter change.
+
+### General
+
 - Works on the cross-repo dashboard (`github.com/issues`), repo issue lists and PR lists.
 - Skips rows that already show their own `#N`, so nothing is duplicated.
 
