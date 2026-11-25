@@ -43,3 +43,11 @@
 .gh-repo-link-hidden {
   display: none !important;
 }
+
+/* Repo name after the title in project tables that span several repos. */
+.gh-repo-badge {
+  margin-left: 8px;
+  color: var(--fgColor-muted, #59636e);
+  font-size: 12px;
+  white-space: nowrap;
+}

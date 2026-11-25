@@ -5,6 +5,10 @@
   const REPO_HIDDEN = "gh-repo-link-hidden";
   // Features that will become user settings.
   const HIDE_REPO_LINK = true;
+  const SHOW_REPO_IN_PROJECTS = true;
+  const REPO_BADGE = "gh-repo-badge";
+  // A project page: /users/NAME/projects/N or /orgs/NAME/projects/N
+  const PROJECT_PAGE_RE = /^\/(?:users|orgs)\/[^/]+\/projects\/\d+/;
   // A repo's own issue or PR list: /owner/repo/issues, /owner/repo/pulls
   const REPO_PAGE_RE = /^\/([^/]+\/[^/]+)\/(?:issues|pulls)\/?$/;
   // Release labels. Strictly release:MAJOR.MINOR.PATCH for now (to become a setting).
@@ -132,6 +136,32 @@
         const sep = unit.nextElementSibling;
         if (sep && sep.textContent.trim() === "•") toggle(sep, hide);
       }
+    }
+  }
+
+  // Project tables don't show which repo an issue is from, which matters when a
+  // project spans several. Add a muted "owner/repo" after the title, but only if
+  // the issues in view come from more than one repo.
+  function showRepoBadges(rows) {
+    const onProject = SHOW_REPO_IN_PROJECTS && PROJECT_PAGE_RE.test(location.pathname);
+    const mixed = new Set(rows.map((r) => r.repo.toLowerCase())).size > 1;
+    const show = onProject && mixed;
+    // Same owner everywhere: the owner is noise, show just the repo name.
+    const sameOwner = new Set(rows.map((r) => r.repo.split("/")[0].toLowerCase())).size === 1;
+    for (const { row, a, repo } of rows) {
+      const label = sameOwner ? repo.split("/")[1] : repo;
+      let badge = row.querySelector("." + REPO_BADGE);
+      if (!show) {
+        if (badge) badge.remove();
+        continue;
+      }
+      if (!badge) {
+        badge = document.createElement("span");
+        badge.className = REPO_BADGE;
+        a.after(badge);
+      }
+      if (badge.textContent !== label) badge.textContent = label;
+      if (badge.title !== "Repository: " + repo) badge.title = "Repository: " + repo;
     }
   }
 
@@ -301,6 +331,7 @@
     insertIds(rows);
     hideNativeIds(rows);
     hideRepoLinks(rows);
+    showRepoBadges(rows);
     alignIds(rows);
     renderReleases(rows);
   }

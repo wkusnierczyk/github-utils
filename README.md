@@ -24,6 +24,13 @@ from that repo, so the `owner/repo` button after the title, and the bullet after
 hidden. It stays wherever it is informative: the cross-repo dashboard, org pages and
 projects. It is only hidden when it names the repo of the page you are on.
 
+### Repo name in project tables
+
+Project tables don't show which repo an issue is from. When the issues in view come from
+more than one repo, a muted repo name is added after the title (just the repo name if all
+repos share an owner, `owner/repo` otherwise). A single-repo project gets nothing, since
+it would be noise.
+
 ### Release column
 
 If you label issues with release versions, e.g. `release:0.1.0`, the version is shown
