@@ -1,6 +1,7 @@
 (() => {
   const ID_CLASS = "gh-issue-id";
   const REL_CLASS = "gh-issue-release";
+  const NATIVE_HIDDEN = "gh-native-id-hidden";
   // Release labels. Strictly release:MAJOR.MINOR.PATCH for now (to become a setting).
   const RELEASE_LABEL = /^release:(\d+\.\d+\.\d+)$/;
   const FILTER_PREFIX = "label:release:";
@@ -67,16 +68,42 @@
 
   // ------------------------------------------------------------------ ids
 
-  // True if the row already shows "#N" itself (e.g. repo-level lists).
+  // A leaf element whose whole text is "#N": GitHub's own id after the title
+  // (e.g. in project tables). We hide those instead of treating them as "shown".
+  // Compares the element's whole text, not single text nodes: React renders
+  // "#{n}" as two text nodes ("#" and "3").
+  function isBareId(el, n) {
+    return !el.children.length && el.textContent.trim() === "#" + n;
+  }
+
+  // True if the row already shows "#N" as part of other text, e.g. "#16 opened
+  // by ..." in repo-level lists.
   function rowShowsId(row, n) {
     const re = new RegExp("^#" + n + "(?!\\d)");
     const walker = document.createTreeWalker(row, NodeFilter.SHOW_TEXT);
     let node;
     while ((node = walker.nextNode())) {
-      if (node.parentElement && node.parentElement.classList.contains(ID_CLASS)) continue;
+      const p = node.parentElement;
+      if (!p || p.classList.contains(ID_CLASS) || isBareId(p, n)) continue;
       if (re.test(node.nodeValue.trim())) return true;
+      if (!p.children.length && re.test(p.textContent.trim())) return true; // split text nodes
     }
     return false;
+  }
+
+  // Hide GitHub's own id after the title in rows where we show ours in front,
+  // so the number isn't shown twice. Hidden with a class, never removed, because
+  // GitHub's renderer owns those nodes.
+  function hideNativeIds(rows) {
+    for (const { row, a, n } of rows) {
+      const ours = row.querySelector("." + ID_CLASS);
+      for (const el of row.querySelectorAll("*")) {
+        if (el.classList.contains(ID_CLASS) || !isBareId(el, n)) continue;
+        const afterTitle = a.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING;
+        const hide = !!ours && !!afterTitle;
+        if (el.classList.contains(NATIVE_HIDDEN) !== hide) el.classList.toggle(NATIVE_HIDDEN, hide);
+      }
+    }
   }
 
   function insertIds(rows) {
@@ -243,6 +270,7 @@
   function process() {
     const rows = collectRows();
     insertIds(rows);
+    hideNativeIds(rows);
     alignIds(rows);
     renderReleases(rows);
   }

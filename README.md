@@ -13,6 +13,10 @@ title. Hovering it shows `owner/repo#13`.
 Ids are right-aligned in a column as wide as the longest id in the list, so titles
 start at the same position whether the id is `#9` or `#123`.
 
+In project table views GitHub still shows the number after the title. Where the extension
+shows the id in front, GitHub's trailing one is hidden (not removed), so the number isn't
+shown twice.
+
 ### Release column
 
 If you label issues with release versions, e.g. `release:0.1.0`, the version is shown
