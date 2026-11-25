@@ -11,9 +11,25 @@
   const PROJECT_PAGE_RE = /^\/(?:users|orgs)\/[^/]+\/projects\/\d+/;
   // A repo's own issue or PR list: /owner/repo/issues, /owner/repo/pulls
   const REPO_PAGE_RE = /^\/([^/]+\/[^/]+)\/(?:issues|pulls)\/?$/;
-  // Release labels. Strictly release:MAJOR.MINOR.PATCH for now (to become a setting).
-  const RELEASE_LABEL = /^release:(\d+\.\d+\.\d+)$/;
-  const FILTER_PREFIX = "label:release:";
+  // Setting: which labels count as releases, a regular expression matched against
+  // the whole label name. Set on the options page, stored in chrome.storage.sync.
+  const DEFAULT_PATTERN = "release:([0-9]+[.][0-9]+[.][0-9]+)";
+  const SETTING_KEY = "releaseLabelPattern";
+  const compilePattern = (p) => {
+    try {
+      return new RegExp("^(?:" + p + ")$");
+    } catch {
+      return null;
+    }
+  };
+  let releaseRe = compilePattern(DEFAULT_PATTERN);
+  const isRelease = (label) => !!releaseRe && releaseRe.test(label);
+  // What is shown for a release label: the pattern's first capture group, or the
+  // whole label if the pattern has none. (options.js has the same rule for its preview.)
+  function releaseText(label) {
+    const m = releaseRe && releaseRe.exec(label);
+    return m && m[1] !== undefined ? m[1] : label;
+  }
 
   // /owner/repo/issues/123 or /owner/repo/pull/123 (no trailing path)
   const PATH_RE = /^\/[^/]+\/[^/]+\/(?:issues|pull)\/(\d+)\/?$/;
@@ -219,12 +235,12 @@
       ) {
         const repo =
           o.repoNameWithOwner || (o.repository && o.repository.nameWithOwner) || "";
-        const versions = [];
+        const found = [];
         for (const l of o.labels) {
-          const m = RELEASE_LABEL.exec((l && l.name) || "");
-          if (m) versions.push(m[1]);
+          const name = (l && l.name) || "";
+          if (isRelease(name)) found.push(name);
         }
-        if (repo && versions.length) releases.set(repo.toLowerCase() + "#" + o.number, versions);
+        if (repo && found.length) releases.set(repo.toLowerCase() + "#" + o.number, found);
         return;
       }
       for (const k of Object.keys(o)) visit(o[k], depth + 1);
@@ -264,9 +280,6 @@
       .finally(schedule);
   }
 
-  // Seed from the page we were loaded on, so there is no extra request or flicker.
-  pageData.set(pageKey(), parseEmbedded(document));
-
   // Numeric per part (0.9.1 < 0.10.0); falls back to text for non-numeric parts.
   function compareVersions(a, b) {
     const x = a.split(".");
@@ -283,6 +296,10 @@
     return 0;
   }
 
+  // Releases are identified by their full label name; ordered by the shown text.
+  const compareLabels = (a, b) =>
+    compareVersions(releaseText(a), releaseText(b)) || a.localeCompare(b);
+
   function releasesFor(entry) {
     const data = pageData.get(pageKey());
     if (!(data instanceof Map)) return [];
@@ -292,7 +309,7 @@
   function renderReleases(rows) {
     ensurePageData();
     for (const [list, entries] of groupByList(rows)) {
-      const found = entries.map((e) => ({ e, versions: releasesFor(e).slice().sort(compareVersions) }));
+      const found = entries.map((e) => ({ e, versions: releasesFor(e).slice().sort(compareLabels) }));
       const any = found.some((f) => f.versions.length);
       const spans = [];
       for (const { e, versions } of found) {
@@ -308,20 +325,26 @@
         }
         const lowest = versions[0] || "";
         const multi = versions.length > 1;
-        if (span.textContent !== lowest) span.textContent = lowest;
+        const text = releaseText(lowest);
+        if (span.textContent !== text) span.textContent = text;
         span.dataset.ghRelease = lowest;
         span.classList.toggle(REL_CLASS + "--multi", multi);
         const title = !lowest
           ? ""
           : multi
-          ? "Several releases: " + versions.join(", ") + " (showing lowest). Click to filter."
-          : "Filter by release " + lowest;
+          ? "Several releases: " + versions.map(releaseText).join(", ") + " (showing lowest). Click to filter."
+          : "Filter by release " + text;
         if (span.title !== title) span.title = title;
         spans.push(span);
       }
       fitWidth(list, spans, "ghRelSig");
     }
   }
+
+  // label:NAME, -label:NAME, label:"NAME WITH SPACES" in a search query.
+  const LABEL_TOKEN = /(^|\s)(-?)label:(?:"([^"]*)"|(\S+))/g;
+  const labelToken = (label, negate) =>
+    (negate ? "-" : "") + "label:" + (/[\s"]/.test(label) ? '"' + label + '"' : label);
 
   // The search query with every release filter (positive or negated) removed.
   function baseQuery() {
@@ -331,27 +354,37 @@
       const input = document.getElementById("issues-index-filter-input");
       q = (input && input.value.trim()) || "is:issue state:open";
     }
-    return q.replace(/(^|\s)-?label:"?release:[^\s"]*"?/g, " ").replace(/\s+/g, " ").trim();
+    return q
+      .replace(LABEL_TOKEN, (all, pre, neg, quoted, bare) =>
+        isRelease(quoted ?? bare) ? " " : all
+      )
+      .replace(/\s+/g, " ")
+      .trim();
   }
 
-  // What the query currently selects: "" (no release filter), a version, or NONE.
+  // What the query currently selects: "" (no release filter), a release label, or NONE.
   const NONE = "none";
   function currentSelection() {
     const q = new URL(location.href).searchParams.get("q") || "";
-    const pos = /(?:^|\s)label:"?release:([^\s"]+)"?/.exec(q);
-    if (pos) return pos[1];
-    return /(?:^|\s)-label:"?release:/.test(q) ? NONE : "";
+    let sel = "";
+    for (const m of q.matchAll(LABEL_TOKEN)) {
+      const name = m[3] ?? m[4];
+      if (!isRelease(name)) continue;
+      if (!m[2]) return name;
+      sel = NONE;
+    }
+    return sel;
   }
 
-  // Go to the same list filtered to `selection` (a version, NONE, or "" for all).
-  // NONE excludes every known release label, since search has no label wildcard.
-  function goToSelection(selection, knownVersions) {
+  // Go to the same list filtered to `selection` (a release label, NONE, or "" for
+  // all). NONE excludes every known release label, since search has no label wildcard.
+  function goToSelection(selection, knownLabels) {
     const u = new URL(location.href);
     let q = baseQuery();
     if (selection === NONE) {
-      q = (q + " " + knownVersions.map((v) => "-" + FILTER_PREFIX + v).join(" ")).trim();
+      q = (q + " " + knownLabels.map((l) => labelToken(l, true)).join(" ")).trim();
     } else if (selection) {
-      q = (q + " " + FILTER_PREFIX + selection).trim();
+      q = (q + " " + labelToken(selection, false)).trim();
     }
     u.searchParams.set("q", q);
     u.searchParams.delete("page");
@@ -359,8 +392,8 @@
   }
 
   // Clicking a release in a row toggles its filter.
-  function filterByRelease(version) {
-    goToSelection(currentSelection() === version ? "" : version);
+  function filterByRelease(label) {
+    goToSelection(currentSelection() === label ? "" : label);
   }
 
   document.addEventListener(
@@ -408,7 +441,7 @@
   }
 
   function lowestRelease(entry) {
-    return releasesFor(entry).slice().sort(compareVersions)[0] || "";
+    return releasesFor(entry).slice().sort(compareLabels)[0] || "";
   }
 
   function applySort(rows) {
@@ -426,7 +459,7 @@
       const sign = sort.dir === "asc" ? 1 : -1;
       keyed.sort((x, y) => {
         if (!x.v !== !y.v) return x.v ? -1 : 1; // unreleased last, in both directions
-        return sign * compareVersions(x.v, y.v) || sign * (x.e.n - y.e.n);
+        return sign * compareLabels(x.v, y.v) || sign * (x.e.n - y.e.n);
       });
       list.style.display = "flex";
       list.style.flexDirection = "column";
@@ -586,7 +619,7 @@
     if (!list || !host || !REPO_PAGE_RE.test(location.pathname)) return remove();
 
     const st = loadAll(baseQuery());
-    const versions = [...new Set([...st.releases.values()].flat())].sort(compareVersions);
+    const versions = [...new Set([...st.releases.values()].flat())].sort(compareLabels);
     const sel = currentSelection();
     const note = sort.on && isPaginated();
     if (!note && !(st.done && versions.length)) return remove();
@@ -631,7 +664,7 @@
 
     if (st.done && versions.length) {
       strip.append(step("\u2039", -1, "Previous release"));
-      versions.forEach((v) => strip.append(chip(v, v, counts.get(v))));
+      versions.forEach((v) => strip.append(chip(v, releaseText(v), counts.get(v))));
       if (none) strip.append(chip(NONE, "no release", none));
       strip.append(step("\u203a", 1, "Next release"));
       if (st.partial) {
@@ -702,8 +735,36 @@
     });
   }
 
-  observe();
-  document.addEventListener("turbo:render", schedule);
-  document.addEventListener("turbo:load", schedule);
-  schedule();
+  // Apply a (new) release pattern: forget what was read with the old one.
+  function applyPattern(pattern, initial) {
+    releaseRe = compilePattern(pattern) || compilePattern(DEFAULT_PATTERN);
+    pageData.clear();
+    loaded.clear();
+    // On first load, reuse the data embedded in this page: no extra request.
+    if (initial) pageData.set(pageKey(), parseEmbedded(document));
+    document.querySelectorAll("." + PAGER_CLASS).forEach((el) => el.remove());
+    schedule();
+  }
+
+  function start() {
+    observe();
+    document.addEventListener("turbo:render", schedule);
+    document.addEventListener("turbo:load", schedule);
+    schedule();
+  }
+
+  try {
+    chrome.storage.sync.get({ [SETTING_KEY]: DEFAULT_PATTERN }, (v) => {
+      applyPattern((v && v[SETTING_KEY]) || DEFAULT_PATTERN, true);
+      start();
+    });
+    chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === "sync" && changes[SETTING_KEY]) {
+        applyPattern(changes[SETTING_KEY].newValue || DEFAULT_PATTERN, false);
+      }
+    });
+  } catch {
+    applyPattern(DEFAULT_PATTERN, true); // no extension storage: defaults
+    start();
+  }
 })();

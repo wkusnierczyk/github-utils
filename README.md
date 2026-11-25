@@ -13,6 +13,7 @@ Small utilities for GitHub issue and PR lists, as a Chrome extension (Manifest V
 | 5 | Release column | issue and PR lists |
 | 6 | Sort by release | issue and PR lists |
 | 7 | Release pager | a repo's issue and PR lists |
+| 8 | Release label pattern (setting) | options page |
 
 ### Ids
 
@@ -36,7 +37,7 @@ name is added after the title (`owner/repo` if owners differ). Single-repo proje
 
 ### Release column
 
-Labels of the form `release:MAJOR.MINOR.PATCH` are shown after the id as a right-aligned column.
+Labels matching the release pattern (default `release:1.2.3`, see Settings) are shown after the id as a right-aligned column.
 
 - No release label in view: no space reserved.
 - Several releases on one issue: the lowest, in red; hover for all.
@@ -61,6 +62,18 @@ A strip above the list: a chip per release with its issue count, plus **no relea
 - Each stop is an ordinary GitHub filter, since search can't order or page by label. When the
   release sort is on and the list has several pages, the strip notes that it applies to this
   page only.
+
+## Settings
+
+Open the options page from `chrome://extensions` > github-utils > **Details** > **Extension options**.
+
+- **Release label pattern**: a regular expression matched against the whole label name,
+  case-sensitive. Default: `release:([0-9]+[.][0-9]+[.][0-9]+)`.
+  The first capture group is what is shown as the release (`0.1.0`); without a group the
+  whole label is shown. Filters use the full label, so any naming scheme works, e.g.
+  `v([0-9.]+)` or `milestone-(.+)`.
+- Saved patterns sync across your Chrome profile and apply to open GitHub tabs at once.
+  Invalid patterns can't be saved.
 
 ## Install (unpacked)
 

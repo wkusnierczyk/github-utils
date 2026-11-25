@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "github-utils",
-  "version": "1.5.0",
-  "description": "Small utilities for GitHub. Currently: shows issue and PR numbers at the front of each list row, between the status icon and the title.",
+  "version": "1.6.0",
+  "description": "Small utilities for GitHub issue and PR lists: ids in front of titles, release labels, sorting and filtering by release, and less clutter.",
   "content_scripts": [
     {
       "matches": [
@@ -16,5 +16,12 @@
       ],
       "run_at": "document_idle"
     }
-  ]
+  ],
+  "permissions": [
+    "storage"
+  ],
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  }
 }
