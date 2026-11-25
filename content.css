@@ -21,6 +21,14 @@
   cursor: pointer;
 }
 
+.gh-issue-col[data-gh-align="left"] {
+  text-align: left;
+}
+
+.gh-issue-col[data-gh-align="center"] {
+  text-align: center;
+}
+
 .gh-issue-col:empty {
   cursor: default;
 }

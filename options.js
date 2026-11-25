@@ -1,7 +1,7 @@
 const SETTING_KEY = "criteria";
 const LEGACY_KEY = "releaseLabelPattern"; // single release pattern, before 1.7
 const DEFAULT_CRITERIA = [
-  { name: "release", pattern: "release:([0-9]+[.][0-9]+[.][0-9]+)", separator: "", pager: true },
+  { name: "release", pattern: "release:([0-9]+[.][0-9]+[.][0-9]+)", separator: "", align: "right", pager: true },
 ];
 
 const $ = (id) => document.getElementById(id);
@@ -32,6 +32,7 @@ function read(row) {
     name: field(row, "name").value.trim(),
     pattern: field(row, "pattern").value,
     separator: field(row, "separator").value,
+    align: field(row, "align").value,
     pager: field(row, "pager").checked,
   };
 }
@@ -77,6 +78,8 @@ function addRow(c) {
       <label>Name</label><input type="text" name="name" spellcheck="false" autocomplete="off">
       <label>Pattern</label><input type="text" name="pattern" spellcheck="false" autocomplete="off">
       <label>Separator</label><input type="text" name="separator" spellcheck="false" autocomplete="off">
+      <label>Alignment</label>
+      <select name="align"><option value="left">left</option><option value="center">center</option><option value="right">right</option></select>
       <label>List above table</label><span><input type="checkbox" name="pager"> a clickable list of values with counts</span>
       <label>Try a label</label><input type="text" name="sample" spellcheck="false" autocomplete="off">
     </div>
@@ -90,6 +93,7 @@ function addRow(c) {
   field(row, "name").value = c.name || "";
   field(row, "pattern").value = c.pattern || "";
   field(row, "separator").value = c.separator || "";
+  field(row, "align").value = ["left", "center", "right"].includes(c.align) ? c.align : "right";
   field(row, "pager").checked = !!c.pager;
   field(row, "sample").value = c.sample || "";
   field(row, "name").addEventListener("input", () => {
@@ -105,7 +109,7 @@ function addRow(c) {
     refresh();
   });
   el.addEventListener("input", (e) => {
-    if (e.target.name === "separator" || e.target.name === "sample" || e.target.name === "pager") refresh();
+    if (["separator", "sample", "pager", "align"].includes(e.target.name)) refresh();
   });
   el.addEventListener("click", (e) => {
     const act = e.target.dataset && e.target.dataset.act;
@@ -138,7 +142,7 @@ $("add").addEventListener("click", () => {
 $("reset").addEventListener("click", () => setAll(DEFAULT_CRITERIA));
 
 $("save").addEventListener("click", () => {
-  const list = rows.map(read).map(({ name, pattern, separator, pager }) => ({ name, pattern, separator, pager }));
+  const list = rows.map(read).map(({ name, pattern, separator, align, pager }) => ({ name, pattern, separator, align, pager }));
   chrome.storage.sync.set({ [SETTING_KEY]: list }, () => {
     chrome.storage.sync.remove(LEGACY_KEY);
     $("ok").textContent = "Saved. Open GitHub tabs update on their own.";

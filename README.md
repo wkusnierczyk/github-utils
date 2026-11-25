@@ -40,7 +40,7 @@ name is added after the title (`owner/repo` if owners differ). Single-repo proje
 A criterion picks out one kind of label, e.g. `release:0.1.0`, `worker:agent`,
 `category:G-features`. Each criterion (see Settings) adds:
 
-- **A column** between the id and the title, right-aligned, in settings order. Rows without a
+- **A column** between the id and the title, in settings order, aligned as set (right by default). Rows without a
   value stay empty; a criterion with no value in view reserves no space. Not shown in project
   views, which don't expose labels.
 - **Click-to-filter**: click a value to add `label:...` to the search bar, click again to
@@ -68,6 +68,7 @@ Add, edit, reorder and remove criteria. Each has:
 | Name | Required, unique. Shown in the *Sort by* menu and on the list above the table. |
 | Pattern | A regular expression matched against the whole label name, case-sensitive. A new criterion starts with `name:(.+)`. |
 | Separator | Joins several capture groups. Optional. |
+| Alignment | Column text alignment: left, center or right (default). |
 | List above table | Show the value list with counts. |
 
 What is shown for a matching label:

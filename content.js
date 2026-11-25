@@ -186,14 +186,16 @@
 
   // Setting: a list of label criteria (edited on the options page). Each has a unique
   // name, a regular expression matched against the whole label name, a separator for
-  // joining several capture groups, and whether to list its values above the table.
+  // joining several capture groups, the column's text alignment, and whether to list
+  // its values above the table.
   // Each criterion gets a column before the title, a "Sort by" entry and click-to-filter.
   const SETTING_KEY = "criteria";
   const LEGACY_KEY = "releaseLabelPattern"; // the single release pattern, before 1.7
   const DEFAULT_CRITERIA = [
-    { name: "release", pattern: "release:([0-9]+[.][0-9]+[.][0-9]+)", separator: "", pager: true },
+    { name: "release", pattern: "release:([0-9]+[.][0-9]+[.][0-9]+)", separator: "", align: "right", pager: true },
   ];
-  let criteria = []; // compiled: { name, re, separator, pager }
+  const ALIGNMENTS = ["left", "center", "right"];
+  let criteria = []; // compiled: { name, re, separator, align, pager }
 
   function compileCriteria(list) {
     const out = [];
@@ -208,7 +210,13 @@
         continue;
       }
       names.add(name.toLowerCase());
-      out.push({ name, re, separator: String((c && c.separator) ?? ""), pager: !!(c && c.pager) });
+      out.push({
+        name,
+        re,
+        separator: String((c && c.separator) ?? ""),
+        align: ALIGNMENTS.includes(c && c.align) ? c.align : "right",
+        pager: !!(c && c.pager),
+      });
     }
     return out;
   }
@@ -382,6 +390,7 @@
           const text = lowest ? valueOf(c, lowest) : "";
           const multi = labels.length > 1;
           if (span.textContent !== text) span.textContent = text;
+          if (span.dataset.ghAlign !== c.align) span.dataset.ghAlign = c.align;
           if (span.dataset.ghLabel !== lowest) span.dataset.ghLabel = lowest;
           span.classList.toggle(COL_CLASS + "--multi", multi);
           const title = !lowest
