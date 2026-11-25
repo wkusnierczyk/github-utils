@@ -49,7 +49,8 @@ A criterion picks out one kind of label, e.g. `release:0.1.0`, `worker:agent`,
   expose labels.
 - **Click-to-filter** on the column's values: click one to add `label:...` to the search bar,
   click again to clear it. Filters of other criteria are kept.
-- **A *Sort by* entry**: *Oldest* sorts lowest first, *Newest* highest first. Values compare
+- **A *Sort by* entry**: *Ascending* sorts lowest first, *Descending* highest first (GitHub's
+  *Oldest*/*Newest* are relabelled while it is active). Values compare
   numerically per dot-separated part (`0.9.1` < `0.10.0`), otherwise as text. Issues without
   a value go last. It reorders the current page only; any other sort hands control back to
   GitHub.

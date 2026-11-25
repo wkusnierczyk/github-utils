@@ -617,8 +617,8 @@
 
   // Adds one entry per criterion to GitHub's "Sort by" menu. It reorders the rows on
   // the page (GitHub paginates, so other pages are not affected) with CSS `order`, so
-  // GitHub's own DOM nodes are never moved. Oldest = lowest first, Newest = highest
-  // first; issues without a value go last either way. Kept per tab and page, so it
+  // GitHub's own DOM nodes are never moved. Ascending (GitHub's Oldest) = lowest first,
+  // Descending (Newest) = highest first; issues without a value go last either way. Kept per tab and page, so it
   // survives the reload caused by clicking a value.
   const SORT_KEY = "gh-utils-sort";
   const SORT_ATTR = "data-gh-sort-crit";
@@ -719,7 +719,31 @@
   function orderFromMenu() {
     const og = document.querySelector('ul[role="group"][aria-label="Order"]');
     const checked = og && og.querySelector('li[aria-checked="true"]');
-    return checked && /Oldest/.test(checked.textContent) ? "asc" : "desc";
+    return checked && ASC_WORD.test(checked.textContent) ? "asc" : "desc";
+  }
+
+  // Oldest/Newest only make sense for dates: while a criterion sorts, the Order items
+  // and the toolbar button say Ascending/Descending instead, and back when it doesn't.
+  // Text nodes are edited in place so GitHub's own updates still land on them.
+  const ASC_WORD = /Oldest|Ascending/;
+  const ORDER_WORDS = { Oldest: "Ascending", Newest: "Descending" };
+  function relabelOrder(active) {
+    const roots = [
+      document.querySelector('ul[role="group"][aria-label="Order"]'),
+      ...document.querySelectorAll("button[aria-haspopup]"),
+    ];
+    for (const root of roots) {
+      if (!root) continue;
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      for (let t = walker.nextNode(); t; t = walker.nextNode()) {
+        const word = t.nodeValue.trim();
+        for (const [date, value] of Object.entries(ORDER_WORDS)) {
+          const from = active ? date : value;
+          const to = active ? value : date;
+          if (word === from) t.nodeValue = t.nodeValue.replace(from, to);
+        }
+      }
+    }
   }
 
   function activateSort(name) {
@@ -744,7 +768,7 @@
       if (label === "Sort by" && sort.crit) {
         setSort(null); // another sort chosen: hand control back to GitHub
       } else if (label === "Order") {
-        sort.dir = /Oldest/.test(li.textContent) ? "asc" : "desc";
+        sort.dir = ASC_WORD.test(li.textContent) ? "asc" : "desc";
         if (sort.crit) setSort(sort.crit, sort.dir);
       }
     },
@@ -950,12 +974,13 @@
       criteria.filter((c) => rows.some((r) => labelsFor(r, c).length)).map((c) => c.name)
     );
     injectSortItems(present);
+    relabelOrder(!!sort.crit && present.has(sort.crit));
   }
 
   let scheduled = false;
   const observer = new MutationObserver(() => schedule());
   const observe = () =>
-    observer.observe(document.documentElement, { childList: true, subtree: true });
+    observer.observe(document.documentElement, { childList: true, characterData: true, subtree: true });
 
   function schedule() {
     if (scheduled) return;
