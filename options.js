@@ -1,7 +1,15 @@
 const SETTING_KEY = "criteria";
 const LEGACY_KEY = "releaseLabelPattern"; // single release pattern, before 1.7
 const DEFAULT_CRITERIA = [
-  { name: "release", pattern: "release:([0-9]+[.][0-9]+[.][0-9]+)", separator: "", align: "right", pager: true },
+  {
+    name: "release",
+    pattern: "release:([0-9]+[.][0-9]+[.][0-9]+)",
+    separator: "",
+    align: "right",
+    enabled: true,
+    column: true,
+    pager: true,
+  },
 ];
 
 const $ = (id) => document.getElementById(id);
@@ -33,6 +41,8 @@ function read(row) {
     pattern: field(row, "pattern").value,
     separator: field(row, "separator").value,
     align: field(row, "align").value,
+    enabled: field(row, "enabled").checked,
+    column: field(row, "column").checked,
     pager: field(row, "pager").checked,
   };
 }
@@ -58,6 +68,7 @@ function refresh() {
     if (err) bad = true;
   }
   $("save").disabled = bad;
+  rows.forEach((r) => r.el.classList.toggle("off", !field(r, "enabled").checked));
   $("ok").textContent = "";
 }
 
@@ -76,12 +87,14 @@ function addRow(c) {
   el.innerHTML = `
     <div class="grid">
       <label>Name</label><input type="text" name="name" spellcheck="false" autocomplete="off">
+      <label>Enabled</label><span><input type="checkbox" name="enabled"> use this criterion (off keeps its settings but hides it everywhere)</span>
       <label>Pattern</label><input type="text" name="pattern" spellcheck="false" autocomplete="off">
       <label>Separator</label><input type="text" name="separator" spellcheck="false" autocomplete="off">
+      <label>Try a label</label><input type="text" name="sample" spellcheck="false" autocomplete="off">
+      <label>Column</label><span><input type="checkbox" name="column"> show a column of values before the title</span>
       <label>Alignment</label>
       <select name="align"><option value="left">left</option><option value="center">center</option><option value="right">right</option></select>
-      <label>List above table</label><span><input type="checkbox" name="pager"> a clickable list of values with counts</span>
-      <label>Try a label</label><input type="text" name="sample" spellcheck="false" autocomplete="off">
+      <label>Value list</label><span><input type="checkbox" name="pager"> show a clickable list of values with counts above the table</span>
     </div>
     <p class="result"></p><p class="error"></p>
     <div class="bar">
@@ -94,6 +107,8 @@ function addRow(c) {
   field(row, "pattern").value = c.pattern || "";
   field(row, "separator").value = c.separator || "";
   field(row, "align").value = ["left", "center", "right"].includes(c.align) ? c.align : "right";
+  field(row, "enabled").checked = c.enabled !== false;
+  field(row, "column").checked = c.column !== false;
   field(row, "pager").checked = !!c.pager;
   field(row, "sample").value = c.sample || "";
   field(row, "name").addEventListener("input", () => {
@@ -109,7 +124,7 @@ function addRow(c) {
     refresh();
   });
   el.addEventListener("input", (e) => {
-    if (["separator", "sample", "pager", "align"].includes(e.target.name)) refresh();
+    if (["separator", "sample", "pager", "align", "enabled", "column"].includes(e.target.name)) refresh();
   });
   el.addEventListener("click", (e) => {
     const act = e.target.dataset && e.target.dataset.act;
@@ -134,7 +149,7 @@ function setAll(list) {
 }
 
 $("add").addEventListener("click", () => {
-  const row = addRow({ pager: false });
+  const row = addRow({ enabled: true, column: true, pager: false });
   field(row, "name").focus();
   refresh();
 });
@@ -142,7 +157,15 @@ $("add").addEventListener("click", () => {
 $("reset").addEventListener("click", () => setAll(DEFAULT_CRITERIA));
 
 $("save").addEventListener("click", () => {
-  const list = rows.map(read).map(({ name, pattern, separator, align, pager }) => ({ name, pattern, separator, align, pager }));
+  const list = rows.map(read).map(({ name, pattern, separator, align, enabled, column, pager }) => ({
+    name,
+    pattern,
+    separator,
+    align,
+    enabled,
+    column,
+    pager,
+  }));
   chrome.storage.sync.set({ [SETTING_KEY]: list }, () => {
     chrome.storage.sync.remove(LEGACY_KEY);
     $("ok").textContent = "Saved. Open GitHub tabs update on their own.";
@@ -151,6 +174,6 @@ $("save").addEventListener("click", () => {
 
 chrome.storage.sync.get([SETTING_KEY, LEGACY_KEY], (v) => {
   if (Array.isArray(v[SETTING_KEY])) setAll(v[SETTING_KEY]);
-  else if (v[LEGACY_KEY]) setAll([{ name: "release", pattern: v[LEGACY_KEY], separator: "", pager: true }]);
+  else if (v[LEGACY_KEY]) setAll([{ name: "release", pattern: v[LEGACY_KEY], pager: true }]);
   else setAll(DEFAULT_CRITERIA);
 });

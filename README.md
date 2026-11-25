@@ -40,7 +40,7 @@ name is added after the title (`owner/repo` if owners differ). Single-repo proje
 A criterion picks out one kind of label, e.g. `release:0.1.0`, `worker:agent`,
 `category:G-features`. Each criterion (see Settings) adds:
 
-- **A column** between the id and the title, in settings order, aligned as set (right by default). Rows without a
+- **A column** (if its *Column* switch is on) between the id and the title, in settings order, aligned as set (right by default). Rows without a
   value stay empty; a criterion with no value in view reserves no space. Not shown in project
   views, which don't expose labels.
 - **Click-to-filter**: click a value to add `label:...` to the search bar, click again to
@@ -49,7 +49,7 @@ A criterion picks out one kind of label, e.g. `release:0.1.0`, `worker:agent`,
   numerically per dot-separated part (`0.9.1` < `0.10.0`), otherwise as text. Issues without
   a value go last. It reorders the current page only; any other sort hands control back to
   GitHub.
-- **A list above the table** (optional per criterion), one row per criterion in a two-column
+- **A list above the table** (if its *Value list* switch is on), one row per criterion in a two-column
   table (name right-aligned, values left-aligned): a chip per value with its issue count,
   plus "no X", with arrows to step through them. It counts by reading all pages of the query
   in the background (labels only, up to 1,000 issues). Each stop is an ordinary GitHub
@@ -66,11 +66,13 @@ Add, edit, reorder and remove criteria. Each has:
 
 | Field | |
 |---|---|
-| Name | Required, unique. Shown in the *Sort by* menu and on the list above the table. |
+| Name | Required, unique. Shown in the *Sort by* menu and next to the value list. |
+| Enabled | Off keeps the criterion's settings but hides it everywhere (column, sort entry, list). |
 | Pattern | A regular expression matched against the whole label name, case-sensitive. A new criterion starts with `name:(.+)`. |
 | Separator | Joins several capture groups. Optional. |
+| Column | Show the column of values before the title (and click-to-filter on it). With it off, the *Sort by* entry and value list still work. |
 | Alignment | Column text alignment: left, center or right (default). |
-| List above table | Show the value list with counts. |
+| Value list | Show the list of values with counts above the table. |
 
 What is shown for a matching label:
 

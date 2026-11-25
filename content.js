@@ -186,21 +186,31 @@
 
   // Setting: a list of label criteria (edited on the options page). Each has a unique
   // name, a regular expression matched against the whole label name, a separator for
-  // joining several capture groups, the column's text alignment, and whether to list
-  // its values above the table.
+  // joining several capture groups, the column's text alignment, and switches: enabled
+  // (off keeps the spec but hides the criterion everywhere), column (the column before
+  // the title) and pager (the list of values above the table).
   // Each criterion gets a column before the title, a "Sort by" entry and click-to-filter.
   const SETTING_KEY = "criteria";
   const LEGACY_KEY = "releaseLabelPattern"; // the single release pattern, before 1.7
   const DEFAULT_CRITERIA = [
-    { name: "release", pattern: "release:([0-9]+[.][0-9]+[.][0-9]+)", separator: "", align: "right", pager: true },
+    {
+      name: "release",
+      pattern: "release:([0-9]+[.][0-9]+[.][0-9]+)",
+      separator: "",
+      align: "right",
+      enabled: true,
+      column: true,
+      pager: true,
+    },
   ];
   const ALIGNMENTS = ["left", "center", "right"];
-  let criteria = []; // compiled: { name, re, separator, align, pager }
+  let criteria = []; // enabled ones, compiled: { name, re, separator, align, column, pager }
 
   function compileCriteria(list) {
     const out = [];
     const names = new Set();
     for (const c of Array.isArray(list) ? list : []) {
+      if (c && c.enabled === false) continue; // disabled: spec kept in settings only
       const name = String((c && c.name) || "").trim();
       if (!name || names.has(name.toLowerCase())) continue;
       let re;
@@ -215,6 +225,7 @@
         re,
         separator: String((c && c.separator) ?? ""),
         align: ALIGNMENTS.includes(c && c.align) ? c.align : "right",
+        column: !(c && c.column === false),
         pager: !!(c && c.pager),
       });
     }
@@ -321,6 +332,7 @@
   const parseEmbedded = (doc) => labelsIn(embeddedJson(doc));
 
   function ensurePageData() {
+    if (!criteria.length) return; // nothing to read labels for
     const key = pageKey();
     if (pageData.has(key)) return;
     pageData.set(key, "loading");
@@ -365,12 +377,13 @@
 
   function renderColumns(rows) {
     ensurePageData();
-    const known = new Set(criteria.map((c) => c.name));
+    const known = new Set(criteria.filter((c) => c.column).map((c) => c.name));
     document.querySelectorAll("." + COL_CLASS).forEach((el) => {
-      if (!known.has(el.dataset.ghCrit)) el.remove(); // criterion removed in settings
+      if (!known.has(el.dataset.ghCrit)) el.remove(); // removed, disabled or column off
     });
     for (const [list, entries] of groupByList(rows)) {
       criteria.forEach((c, i) => {
+        if (!c.column) return;
         const found = entries.map((e) => ({ e, labels: sortedLabels(e, c) }));
         const any = found.some((f) => f.labels.length);
         const spans = [];
@@ -848,7 +861,7 @@
   function criteriaFrom(v) {
     if (v && Array.isArray(v[SETTING_KEY])) return v[SETTING_KEY];
     if (v && v[LEGACY_KEY]) {
-      return [{ name: "release", pattern: v[LEGACY_KEY], separator: "", pager: true }];
+      return [{ name: "release", pattern: v[LEGACY_KEY], pager: true }];
     }
     return DEFAULT_CRITERIA;
   }
