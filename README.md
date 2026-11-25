@@ -17,6 +17,13 @@ In project table views GitHub still shows the number after the title. Where the 
 shows the id in front, GitHub's trailing one is hidden (not removed), so the number isn't
 shown twice.
 
+### Repo name after the title
+
+On a repo's own issue or PR list (`/owner/repo/issues`, `/owner/repo/pulls`) every row is
+from that repo, so the `owner/repo` button after the title, and the bullet after it, are
+hidden. It stays wherever it is informative: the cross-repo dashboard, org pages and
+projects. It is only hidden when it names the repo of the page you are on.
+
 ### Release column
 
 If you label issues with release versions, e.g. `release:0.1.0`, the version is shown

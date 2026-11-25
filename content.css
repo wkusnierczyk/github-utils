@@ -38,3 +38,8 @@
 .gh-native-id-hidden {
   display: none !important;
 }
+
+/* "owner/repo" after the title (and its bullet) on a repo's own list. */
+.gh-repo-link-hidden {
+  display: none !important;
+}

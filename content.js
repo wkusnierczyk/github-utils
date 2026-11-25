@@ -2,6 +2,11 @@
   const ID_CLASS = "gh-issue-id";
   const REL_CLASS = "gh-issue-release";
   const NATIVE_HIDDEN = "gh-native-id-hidden";
+  const REPO_HIDDEN = "gh-repo-link-hidden";
+  // Features that will become user settings.
+  const HIDE_REPO_LINK = true;
+  // A repo's own issue or PR list: /owner/repo/issues, /owner/repo/pulls
+  const REPO_PAGE_RE = /^\/([^/]+\/[^/]+)\/(?:issues|pulls)\/?$/;
   // Release labels. Strictly release:MAJOR.MINOR.PATCH for now (to become a setting).
   const RELEASE_LABEL = /^release:(\d+\.\d+\.\d+)$/;
   const FILTER_PREFIX = "label:release:";
@@ -102,6 +107,30 @@
         const afterTitle = a.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING;
         const hide = !!ours && !!afterTitle;
         if (el.classList.contains(NATIVE_HIDDEN) !== hide) el.classList.toggle(NATIVE_HIDDEN, hide);
+      }
+    }
+  }
+
+  // On a repo's own issue/PR list every row is from that repo, so the "owner/repo"
+  // button after the title (it only adds a repo: filter) is redundant. Hide it, and
+  // the bullet after it, only when it names the page's own repo; on dashboards,
+  // org pages and projects, where the repo is informative, it stays.
+  function hideRepoLinks(rows) {
+    const m = REPO_PAGE_RE.exec(location.pathname);
+    const pageRepo = HIDE_REPO_LINK && m ? m[1].toLowerCase() : null;
+    const toggle = (el, hide) => {
+      if (el.classList.contains(REPO_HIDDEN) !== hide) el.classList.toggle(REPO_HIDDEN, hide);
+    };
+    for (const { row } of rows) {
+      for (const btn of row.querySelectorAll("button")) {
+        const text = btn.textContent.trim().toLowerCase();
+        if (!/^[^/\s]+\/[^/\s]+$/.test(text)) continue; // not an owner/repo label
+        const unit = btn.parentElement;
+        if (!unit || unit.textContent.trim().toLowerCase() !== text) continue;
+        const hide = pageRepo === text;
+        toggle(unit, hide);
+        const sep = unit.nextElementSibling;
+        if (sep && sep.textContent.trim() === "•") toggle(sep, hide);
       }
     }
   }
@@ -271,6 +300,7 @@
     const rows = collectRows();
     insertIds(rows);
     hideNativeIds(rows);
+    hideRepoLinks(rows);
     alignIds(rows);
     renderReleases(rows);
   }
