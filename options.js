@@ -87,7 +87,7 @@ function addRow(c) {
   el.innerHTML = `
     <div class="grid">
       <label>Name</label><input type="text" name="name" spellcheck="false" autocomplete="off">
-      <label>Enabled</label><span><input type="checkbox" name="enabled"> use this criterion (off keeps its settings but hides it everywhere)</span>
+      <label>Enabled</label><span><input type="checkbox" name="enabled"> use this criterion ('off' keeps its settings saved, but does not apply it)</span>
       <label>Pattern</label><input type="text" name="pattern" spellcheck="false" autocomplete="off">
       <label>Separator</label><input type="text" name="separator" spellcheck="false" autocomplete="off">
       <label>Try a label</label><input type="text" name="sample" spellcheck="false" autocomplete="off">

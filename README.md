@@ -67,7 +67,7 @@ Add, edit, reorder and remove criteria. Each has:
 | Field | |
 |---|---|
 | Name | Required, unique. Shown in the *Sort by* menu and next to the value list. |
-| Enabled | Off keeps the criterion's settings but hides it everywhere (column, sort entry, list). |
+| Enabled | 'Off' keeps the criterion's settings saved, but does not apply it (no column, sort entry or list). |
 | Pattern | A regular expression matched against the whole label name, case-sensitive. A new criterion starts with `name:(.+)`. |
 | Separator | Joins several capture groups. Optional. |
 | Column | Show the column of values before the title (and click-to-filter on it). With it off, the *Sort by* entry and value list still work. |
