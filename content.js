@@ -245,11 +245,17 @@
   // Seed from the page we were loaded on, so there is no extra request or flicker.
   pageData.set(pageKey(), parseEmbedded(document));
 
+  // Numeric per part (0.9.1 < 0.10.0); falls back to text for non-numeric parts.
   function compareVersions(a, b) {
-    const x = a.split(".").map(Number);
-    const y = b.split(".").map(Number);
+    const x = a.split(".");
+    const y = b.split(".");
     for (let i = 0; i < Math.max(x.length, y.length); i++) {
-      const d = (x[i] || 0) - (y[i] || 0);
+      const p = x[i] ?? "";
+      const q = y[i] ?? "";
+      const pn = Number(p);
+      const qn = Number(q);
+      const d =
+        p !== "" && q !== "" && !isNaN(pn) && !isNaN(qn) ? pn - qn : p.localeCompare(q);
       if (d) return d;
     }
     return 0;
@@ -324,9 +330,158 @@
     true
   );
 
+  // ----------------------------------------------------------------- sort
+
+  // Adds "Release" to GitHub's "Sort by" menu. It reorders the rows on the page
+  // (GitHub paginates, so other pages are not affected) with CSS `order`, so
+  // GitHub's own DOM nodes are never moved. Oldest = lowest release first, Newest =
+  // highest first; issues without a release go last either way. Kept per tab and
+  // page, so it survives the reload caused by clicking a release.
+  const SORT_KEY = "gh-utils-sort-release";
+  const SORT_ATTR = "data-gh-sort-release";
+  const sort = { on: false, dir: "desc", path: location.pathname };
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(SORT_KEY) || "null");
+    if (saved && saved.path === location.pathname) {
+      sort.on = true;
+      sort.dir = saved.dir === "asc" ? "asc" : "desc";
+    }
+  } catch {
+    /* storage unavailable: sort just won't persist */
+  }
+
+  function setSort(on, dir) {
+    sort.on = on;
+    if (dir) sort.dir = dir;
+    try {
+      if (on) sessionStorage.setItem(SORT_KEY, JSON.stringify({ path: sort.path, dir: sort.dir }));
+      else sessionStorage.removeItem(SORT_KEY);
+    } catch {
+      /* ignore */
+    }
+    schedule();
+  }
+
+  function lowestRelease(entry) {
+    return releasesFor(entry).slice().sort(compareVersions)[0] || "";
+  }
+
+  function applySort(rows) {
+    for (const [list, entries] of groupByList(rows)) {
+      const keyed = entries.map((e) => ({ e, v: lowestRelease(e) }));
+      if (!(sort.on && keyed.some((k) => k.v))) {
+        if (list.dataset.ghSorted) {
+          entries.forEach((e) => (e.row.style.order = ""));
+          list.style.display = "";
+          list.style.flexDirection = "";
+          delete list.dataset.ghSorted;
+        }
+        continue;
+      }
+      const sign = sort.dir === "asc" ? 1 : -1;
+      keyed.sort((x, y) => {
+        if (!x.v !== !y.v) return x.v ? -1 : 1; // unreleased last, in both directions
+        return sign * compareVersions(x.v, y.v) || sign * (x.e.n - y.e.n);
+      });
+      list.style.display = "flex";
+      list.style.flexDirection = "column";
+      list.dataset.ghSorted = "1";
+      keyed.forEach((k, i) => {
+        const o = String(i);
+        if (k.e.row.style.order !== o) k.e.row.style.order = o;
+      });
+    }
+  }
+
+  function injectSortItem(anyRelease) {
+    const group = document.querySelector('ul[role="group"][aria-label="Sort by"]');
+    if (!group) return;
+    let ours = group.querySelector("[" + SORT_ATTR + "]");
+    if (!anyRelease) {
+      if (ours) ours.remove(); // no releases in view: nothing to sort by
+      return;
+    }
+    const items = [...group.querySelectorAll(':scope > li[role="menuitemradio"]')];
+    if (!ours) {
+      const template =
+        items.find((li) => li.textContent.trim() === "Total comments") || items[1] || items[0];
+      if (!template) return;
+      ours = template.cloneNode(true);
+      ours.removeAttribute("id");
+      ours.setAttribute(SORT_ATTR, "1");
+      ours.setAttribute("tabindex", "-1");
+      const label = template.textContent.trim();
+      ours.querySelectorAll("span").forEach((s) => {
+        if (!s.children.length && s.textContent.trim() === label) s.textContent = "Release";
+      });
+      template.after(ours);
+    }
+    const want = sort.on ? "true" : "false";
+    if (ours.getAttribute("aria-checked") !== want) ours.setAttribute("aria-checked", want);
+    if (sort.on) {
+      for (const li of items) {
+        if (li !== ours && li.getAttribute("aria-checked") !== "false") {
+          li.setAttribute("aria-checked", "false");
+        }
+      }
+    }
+  }
+
+  function orderFromMenu() {
+    const og = document.querySelector('ul[role="group"][aria-label="Order"]');
+    const checked = og && og.querySelector('li[aria-checked="true"]');
+    return checked && /Oldest/.test(checked.textContent) ? "asc" : "desc";
+  }
+
+  function activateSort() {
+    const dir = orderFromMenu();
+    const trigger = document.querySelector('button[aria-haspopup][aria-expanded="true"]');
+    setSort(true, dir);
+    if (trigger) trigger.click(); // close GitHub's menu
+  }
+
+  document.addEventListener(
+    "click",
+    (e) => {
+      const li = e.target.closest && e.target.closest('li[role="menuitemradio"]');
+      if (!li) return;
+      if (li.hasAttribute(SORT_ATTR)) {
+        e.preventDefault();
+        e.stopPropagation();
+        activateSort();
+        return;
+      }
+      const label = li.parentElement && li.parentElement.getAttribute("aria-label");
+      if (label === "Sort by" && sort.on) {
+        setSort(false); // another sort chosen: hand control back to GitHub
+      } else if (label === "Order") {
+        sort.dir = /Oldest/.test(li.textContent) ? "asc" : "desc";
+        if (sort.on) setSort(true, sort.dir);
+      }
+    },
+    true
+  );
+
+  document.addEventListener(
+    "keydown",
+    (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const li = e.target.closest && e.target.closest("[" + SORT_ATTR + "]");
+      if (!li) return;
+      e.preventDefault();
+      e.stopPropagation();
+      activateSort();
+    },
+    true
+  );
+
   // ----------------------------------------------------------------- main
 
   function process() {
+    if (sort.path !== location.pathname) {
+      sort.path = location.pathname;
+      setSort(false); // new page: forget the sort
+    }
     const rows = collectRows();
     insertIds(rows);
     hideNativeIds(rows);
@@ -334,6 +489,8 @@
     showRepoBadges(rows);
     alignIds(rows);
     renderReleases(rows);
+    applySort(rows);
+    injectSortItem(rows.some((r) => releasesFor(r).length > 0));
   }
 
   let scheduled = false;

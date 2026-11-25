@@ -47,6 +47,18 @@ right after the id, before the title, as its own right-aligned column.
   render label chips). For a filter or page change, the extension fetches the same URL once
   to read it. Label edits show up after the next page load or filter change.
 
+### Sort by release
+
+When any issue in view has a release label, **Release** is added to GitHub's *Sort by* menu.
+
+- *Oldest* puts the lowest release first, *Newest* the highest. Versions compare as numbers,
+  so `0.9.1` comes before `0.10.0`. Ties are ordered by issue number in the same direction.
+- Issues without a release always go last, in either direction.
+- It reorders the rows on the current page only. GitHub paginates, so other pages are not
+  affected.
+- Choosing any other sort hands control back to GitHub. The choice is remembered per tab and
+  page, so it survives the reload from clicking a release.
+
 ### General
 
 - Works on the cross-repo dashboard (`github.com/issues`), repo issue lists and PR lists.
