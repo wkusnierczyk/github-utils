@@ -10,10 +10,10 @@ Small utilities for GitHub issue and PR lists, as a Chrome extension (Manifest V
 | 2 | GitHub's trailing id hidden | project tables |
 | 3 | Redundant repo name hidden | a repo's own lists |
 | 4 | Repo name badge | multi-repo project tables |
-| 5 | Release column | issue and PR lists |
-| 6 | Sort by release | issue and PR lists |
-| 7 | Release pager | a repo's issue and PR lists |
-| 8 | Release label pattern (setting) | options page |
+| 5 | Label columns | issue and PR lists |
+| 6 | Sort by label criterion | issue and PR lists |
+| 7 | Value list with counts above the table | a repo's issue and PR lists |
+| 8 | User-defined label criteria (setting) | options page |
 
 ### Ids
 
@@ -35,45 +35,52 @@ redundant and hidden. Dashboards, org pages and projects keep it.
 Project tables don't show the repo. When the issues in view span several repos, a muted repo
 name is added after the title (`owner/repo` if owners differ). Single-repo projects get none.
 
-### Release column
+### Label criteria
 
-Labels matching the release pattern (default `release:1.2.3`, see Settings) are shown after the id as a right-aligned column.
+A criterion picks out one kind of label, e.g. `release:0.1.0`, `worker:agent`,
+`category:G-features`. Each criterion (see Settings) adds:
 
-- No release label in view: no space reserved.
-- Several releases on one issue: the lowest, in red; hover for all.
-- Click a release to filter (`label:release:X` in the search bar); click again to clear.
-- Not shown in project views, which don't expose labels.
+- **A column** between the id and the title, right-aligned, in settings order. Rows without a
+  value stay empty; a criterion with no value in view reserves no space. Not shown in project
+  views, which don't expose labels.
+- **Click-to-filter**: click a value to add `label:...` to the search bar, click again to
+  clear it. Filters of other criteria are kept.
+- **A *Sort by* entry**: *Oldest* sorts lowest first, *Newest* highest first. Values compare
+  numerically per dot-separated part (`0.9.1` < `0.10.0`), otherwise as text. Issues without
+  a value go last. It reorders the current page only; any other sort hands control back to
+  GitHub.
+- **A list above the table** (optional per criterion): a chip per value with its issue count,
+  plus "no X", with arrows to step through them. It counts by reading all pages of the query
+  in the background (labels only, up to 1,000 issues). Each stop is an ordinary GitHub
+  filter, since search can't order or page by label. When the criterion's sort is on and the
+  list has several pages, the strip notes that it applies to this page only.
 
-### Sort by release
-
-Adds **Release** to the *Sort by* menu when a release is in view.
-
-- *Oldest*: lowest first. *Newest*: highest first. Versions compare numerically (`0.9.1` < `0.10.0`).
-- Issues without a release go last either way.
-- Reorders the current page only. Any other sort hands control back to GitHub.
-
-### Release pager
-
-A strip above the list: a chip per release with its issue count, plus **no release**.
-
-- Click a chip to filter, click the active one to clear. Arrows step through releases in order.
-- Counts come from reading all pages of the query in the background (release labels only,
-  up to 1,000 issues).
-- Each stop is an ordinary GitHub filter, since search can't order or page by label. When the
-  release sort is on and the list has several pages, the strip notes that it applies to this
-  page only.
+An issue with several labels of one criterion shows the lowest, in red; hover for all.
 
 ## Settings
 
 Open the options page from `chrome://extensions` > github-utils > **Details** > **Extension options**.
 
-- **Release label pattern**: a regular expression matched against the whole label name,
-  case-sensitive. Default: `release:([0-9]+[.][0-9]+[.][0-9]+)`.
-  The first capture group is what is shown as the release (`0.1.0`); without a group the
-  whole label is shown. Filters use the full label, so any naming scheme works, e.g.
-  `v([0-9.]+)` or `milestone-(.+)`.
-- Saved patterns sync across your Chrome profile and apply to open GitHub tabs at once.
-  Invalid patterns can't be saved.
+Add, edit, reorder and remove criteria. Each has:
+
+| Field | |
+|---|---|
+| Name | Required, unique. Shown in the *Sort by* menu and on the list above the table. |
+| Pattern | A regular expression matched against the whole label name, case-sensitive. A new criterion starts with `name:(.+)`. |
+| Separator | Joins several capture groups. Optional. |
+| List above table | Show the value list with counts. |
+
+What is shown for a matching label:
+
+| Pattern | Label | Shown |
+|---|---|---|
+| `release:[0-9]+[.][0-9]+[.][0-9]+` (no group) | `release:0.1.0` | `release:0.1.0` |
+| `release:([0-9]+[.][0-9]+[.][0-9]+)` (one group) | `release:0.1.0` | `0.1.0` |
+| `release:([0-9]+)[.]([0-9]+)[.]([0-9]+)`, separator `:` | `release:0.1.0` | `0:1:0` |
+
+The default is a single `release` criterion with the one-group pattern above. Settings sync
+across your Chrome profile and apply to open GitHub tabs at once. A pattern from an earlier
+version (single release setting) becomes the `release` criterion.
 
 ## Install (unpacked)
 

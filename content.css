@@ -10,7 +10,7 @@
   user-select: text;
 }
 
-.gh-issue-release {
+.gh-issue-col {
   display: inline-block;
   box-sizing: border-box;
   margin-right: 6px;
@@ -21,16 +21,16 @@
   cursor: pointer;
 }
 
-.gh-issue-release:empty {
+.gh-issue-col:empty {
   cursor: default;
 }
 
-.gh-issue-release:not(:empty):hover {
+.gh-issue-col:not(:empty):hover {
   text-decoration: underline;
 }
 
-/* More than one release label on the issue: the lowest is shown, in red. */
-.gh-issue-release--multi {
+/* More than one matching label on the issue: the lowest is shown, in red. */
+.gh-issue-col--multi {
   color: var(--fgColor-danger, #d1242f);
 }
 
@@ -53,7 +53,7 @@
 }
 
 /* Release pager strip above the issue list. */
-.gh-release-pager {
+.gh-label-pager {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -62,8 +62,8 @@
   border-bottom: 1px solid var(--borderColor-muted, #d1d9e0);
   font-size: 12px;
 }
-.gh-release-pager__chip,
-.gh-release-pager__step {
+.gh-label-pager__chip,
+.gh-label-pager__step {
   font: inherit;
   line-height: 20px;
   padding: 0 8px;
@@ -73,27 +73,31 @@
   color: var(--fgColor-default, #1f2328);
   cursor: pointer;
 }
-.gh-release-pager__chip span {
+.gh-label-pager__chip span {
   color: var(--fgColor-muted, #59636e);
   font-variant-numeric: tabular-nums;
 }
-.gh-release-pager__chip:hover,
-.gh-release-pager__step:hover:not(:disabled) {
+.gh-label-pager__chip:hover,
+.gh-label-pager__step:hover:not(:disabled) {
   border-color: var(--fgColor-accent, #0969da);
 }
-.gh-release-pager__chip--on {
+.gh-label-pager__chip--on {
   background: var(--bgColor-accent-emphasis, #0969da);
   border-color: var(--bgColor-accent-emphasis, #0969da);
   color: var(--fgColor-onEmphasis, #fff);
 }
-.gh-release-pager__chip--on span {
+.gh-label-pager__chip--on span {
   color: inherit;
 }
-.gh-release-pager__step:disabled {
+.gh-label-pager__step:disabled {
   opacity: 0.4;
   cursor: default;
 }
-.gh-release-pager__note {
+.gh-label-pager__note {
   margin-left: auto;
   color: var(--fgColor-muted, #59636e);
+}
+.gh-label-pager__name {
+  font-weight: 600;
+  margin-right: 2px;
 }

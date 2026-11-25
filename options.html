@@ -2,32 +2,40 @@
 <meta charset="utf-8">
 <title>github-utils options</title>
 <style>
-  body { font: 14px/1.5 system-ui, sans-serif; max-width: 640px; margin: 32px auto; padding: 0 16px; color: #1f2328; }
+  body { font: 14px/1.5 system-ui, sans-serif; max-width: 760px; margin: 32px auto; padding: 0 16px; color: #1f2328; }
   h1 { font-size: 20px; }
-  label { display: block; font-weight: 600; margin-top: 20px; }
-  input[type=text] { width: 100%; box-sizing: border-box; font: 13px ui-monospace, monospace; padding: 6px 8px; margin-top: 4px; }
+  h2 { font-size: 16px; margin-top: 28px; }
   .hint { color: #59636e; margin: 4px 0 0; }
+  fieldset { border: 1px solid #d1d9e0; border-radius: 6px; margin: 12px 0; padding: 8px 12px 12px; }
+  .grid { display: grid; grid-template-columns: 9em 1fr; gap: 6px 12px; align-items: center; }
+  .grid label { color: #59636e; }
+  input[type=text] { box-sizing: border-box; width: 100%; font: 13px ui-monospace, monospace; padding: 5px 8px; }
+  input[name=separator] { width: 6em; }
+  .bar { display: flex; gap: 6px; justify-content: flex-end; margin-top: 8px; }
   .row { margin-top: 16px; display: flex; gap: 8px; align-items: center; }
-  #error { color: #cf222e; }
+  .error { color: #cf222e; margin: 4px 0 0; }
   #ok { color: #1a7f37; }
-  #preview { font-family: ui-monospace, monospace; }
+  .result { font-family: ui-monospace, monospace; color: #59636e; }
 </style>
 <h1>github-utils</h1>
 
-<label for="pattern">Release label pattern</label>
-<input id="pattern" type="text" spellcheck="false" autocomplete="off">
+<h2>Label criteria</h2>
 <p class="hint">
-  A regular expression matched against the whole label name. The first capture group is
-  shown as the release; without one, the whole label is shown. Case-sensitive.
+  Each criterion adds a column before the issue title, an entry in the <em>Sort by</em> menu,
+  and click-to-filter on its values. Columns appear in the order below.
 </p>
-<p id="error"></p>
+<p class="hint">
+  The pattern is a regular expression matched against the whole label name (case-sensitive).
+  No capture group: the whole label is shown. One or more groups: the captures are shown, in
+  order, joined by the separator.
+</p>
 
-<label for="sample">Try a label</label>
-<input id="sample" type="text" value="release:0.1.0" spellcheck="false" autocomplete="off">
-<p class="hint" id="result"></p>
+<div id="list"></div>
+<div class="row"><button id="add" type="button">Add criterion</button></div>
+<p class="error" id="error"></p>
 
 <div class="row">
-  <button id="save">Save</button>
+  <button id="save" type="button">Save</button>
   <button id="reset" type="button">Reset to default</button>
   <span id="ok"></span>
 </div>
