@@ -51,3 +51,49 @@
   font-size: 12px;
   white-space: nowrap;
 }
+
+/* Release pager strip above the issue list. */
+.gh-release-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--borderColor-muted, #d1d9e0);
+  font-size: 12px;
+}
+.gh-release-pager__chip,
+.gh-release-pager__step {
+  font: inherit;
+  line-height: 20px;
+  padding: 0 8px;
+  border: 1px solid var(--borderColor-default, #d1d9e0);
+  border-radius: 12px;
+  background: var(--bgColor-muted, #f6f8fa);
+  color: var(--fgColor-default, #1f2328);
+  cursor: pointer;
+}
+.gh-release-pager__chip span {
+  color: var(--fgColor-muted, #59636e);
+  font-variant-numeric: tabular-nums;
+}
+.gh-release-pager__chip:hover,
+.gh-release-pager__step:hover:not(:disabled) {
+  border-color: var(--fgColor-accent, #0969da);
+}
+.gh-release-pager__chip--on {
+  background: var(--bgColor-accent-emphasis, #0969da);
+  border-color: var(--bgColor-accent-emphasis, #0969da);
+  color: var(--fgColor-onEmphasis, #fff);
+}
+.gh-release-pager__chip--on span {
+  color: inherit;
+}
+.gh-release-pager__step:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.gh-release-pager__note {
+  margin-left: auto;
+  color: var(--fgColor-muted, #59636e);
+}

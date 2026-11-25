@@ -194,16 +194,21 @@
 
   const pageKey = () => location.pathname + location.search;
 
-  function parseEmbedded(doc) {
+  function embeddedJson(doc) {
     const script = doc.querySelector('script[data-target="react-app.embeddedData"]');
-    const releases = new Map();
-    if (!script) return releases;
-    let json;
+    if (!script) return null;
     try {
-      json = JSON.parse(script.textContent);
+      return JSON.parse(script.textContent);
     } catch {
-      return releases;
+      return null;
     }
+  }
+
+  // "owner/repo#n" -> [versions], for the issues in the embedded data that carry
+  // release labels.
+  function releasesIn(json) {
+    const releases = new Map();
+    if (!json) return releases;
     const visit = (o, depth) => {
       if (!o || typeof o !== "object" || depth > 14) return;
       if (
@@ -227,6 +232,23 @@
     visit(json, 0);
     return releases;
   }
+
+  // GitHub's own paging numbers for the query: { totalPages, totalCount }.
+  function pageInfoIn(json) {
+    let found = null;
+    const visit = (o, depth) => {
+      if (found || !o || typeof o !== "object" || depth > 8) return;
+      if (typeof o.totalPages === "number" && typeof o.totalCount === "number") {
+        found = { totalPages: o.totalPages, totalCount: o.totalCount };
+        return;
+      }
+      for (const k of Object.keys(o)) visit(o[k], depth + 1);
+    };
+    visit(json, 0);
+    return found || { totalPages: 1, totalCount: 0 };
+  }
+
+  const parseEmbedded = (doc) => releasesIn(embeddedJson(doc));
 
   function ensurePageData() {
     const key = pageKey();
@@ -301,21 +323,44 @@
     }
   }
 
-  // Clicking a release toggles `label:release:X` in the search query.
-  function filterByRelease(version) {
+  // The search query with every release filter (positive or negated) removed.
+  function baseQuery() {
     const u = new URL(location.href);
     let q = u.searchParams.get("q");
     if (!q || !q.trim()) {
       const input = document.getElementById("issues-index-filter-input");
       q = (input && input.value.trim()) || "is:issue state:open";
     }
-    const token = FILTER_PREFIX + version;
-    const had = q.split(/\s+/).includes(token);
-    q = q.replace(/(^|\s)label:"?release:[^\s"]*"?/g, " ").replace(/\s+/g, " ").trim();
-    if (!had) q = (q + " " + token).trim();
+    return q.replace(/(^|\s)-?label:"?release:[^\s"]*"?/g, " ").replace(/\s+/g, " ").trim();
+  }
+
+  // What the query currently selects: "" (no release filter), a version, or NONE.
+  const NONE = "none";
+  function currentSelection() {
+    const q = new URL(location.href).searchParams.get("q") || "";
+    const pos = /(?:^|\s)label:"?release:([^\s"]+)"?/.exec(q);
+    if (pos) return pos[1];
+    return /(?:^|\s)-label:"?release:/.test(q) ? NONE : "";
+  }
+
+  // Go to the same list filtered to `selection` (a version, NONE, or "" for all).
+  // NONE excludes every known release label, since search has no label wildcard.
+  function goToSelection(selection, knownVersions) {
+    const u = new URL(location.href);
+    let q = baseQuery();
+    if (selection === NONE) {
+      q = (q + " " + knownVersions.map((v) => "-" + FILTER_PREFIX + v).join(" ")).trim();
+    } else if (selection) {
+      q = (q + " " + FILTER_PREFIX + selection).trim();
+    }
     u.searchParams.set("q", q);
     u.searchParams.delete("page");
     location.assign(u.href);
+  }
+
+  // Clicking a release in a row toggles its filter.
+  function filterByRelease(version) {
+    goToSelection(currentSelection() === version ? "" : version);
   }
 
   document.addEventListener(
@@ -475,6 +520,150 @@
     true
   );
 
+  // ---------------------------------------------------------------- pager
+
+  // GitHub paginates, and search can't order or page by label, so a true
+  // release-ordered page isn't possible. Instead we read every page of the current
+  // query in the background (just the release labels), and show a strip above the
+  // list: one chip per release with its issue count, "none" for the rest, and
+  // previous/next to step through them in release order. Each stop is an ordinary
+  // GitHub filter (label:release:X), so the page itself stays GitHub's.
+  const PAGER_CLASS = "gh-release-pager";
+  const MAX_PAGES = 40; // 1000 issues; beyond that the counts are partial
+  const CONCURRENCY = 4;
+  const loaded = new Map(); // "path?query" -> { done, releases, total, pages, partial }
+
+  function loadAll(base) {
+    const key = location.pathname + "?" + base;
+    if (loaded.has(key)) return loaded.get(key);
+    const st = { done: false, releases: new Map(), total: 0, pages: 1, partial: false };
+    loaded.set(key, st);
+    const urlFor = (k) => {
+      const u = new URL(location.href);
+      u.searchParams.set("q", base);
+      if (k > 1) u.searchParams.set("page", String(k));
+      else u.searchParams.delete("page");
+      return u.href;
+    };
+    const get = (k) =>
+      fetch(urlFor(k), { credentials: "same-origin", headers: { Accept: "text/html" } })
+        .then((r) => (r.ok ? r.text() : ""))
+        .then((html) => embeddedJson(new DOMParser().parseFromString(html, "text/html")))
+        .catch(() => null);
+    const merge = (json) => releasesIn(json).forEach((v, k) => st.releases.set(k, v));
+    get(1)
+      .then(async (first) => {
+        if (!first) return;
+        const info = pageInfoIn(first);
+        st.total = info.totalCount;
+        st.pages = Math.min(info.totalPages, MAX_PAGES);
+        st.partial = info.totalPages > MAX_PAGES;
+        merge(first);
+        const queue = [];
+        for (let k = 2; k <= st.pages; k++) queue.push(k);
+        const worker = async () => {
+          for (let k = queue.shift(); k; k = queue.shift()) merge(await get(k));
+        };
+        await Promise.all(Array.from({ length: CONCURRENCY }, worker));
+      })
+      .finally(() => {
+        st.done = true;
+        schedule();
+      });
+    return st;
+  }
+
+  const isPaginated = () =>
+    [...document.querySelectorAll('a[href*="page="]')].some((a) =>
+      /^(\d+|Next|Previous)$/.test(a.textContent.trim())
+    );
+
+  function renderPager(rows) {
+    const list = rows.length ? rows[0].row.parentElement : null;
+    const host = list && list.parentElement;
+    const old = document.querySelector("." + PAGER_CLASS);
+    const remove = () => old && old.remove();
+    if (!list || !host || !REPO_PAGE_RE.test(location.pathname)) return remove();
+
+    const st = loadAll(baseQuery());
+    const versions = [...new Set([...st.releases.values()].flat())].sort(compareVersions);
+    const sel = currentSelection();
+    const note = sort.on && isPaginated();
+    if (!note && !(st.done && versions.length)) return remove();
+
+    const counts = new Map(versions.map((v) => [v, 0]));
+    for (const vs of st.releases.values()) for (const v of new Set(vs)) counts.set(v, counts.get(v) + 1);
+    const withRelease = st.releases.size;
+    const none = Math.max(0, st.total - withRelease);
+    const sig = JSON.stringify([versions, [...counts.values()], none, sel, note, st.done, st.partial]);
+    if (old && old.dataset.sig === sig && old.nextElementSibling === list) return;
+
+    const strip = document.createElement("div");
+    strip.className = PAGER_CLASS;
+    strip.dataset.sig = sig;
+
+    // Stops in release order; "" (all) is where you are when no release is selected.
+    const stops = versions.concat(none ? [NONE] : []);
+    const at = sel ? stops.indexOf(sel) : -1;
+    const step = (label, dir, title) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = PAGER_CLASS + "__step";
+      b.textContent = label;
+      b.title = title;
+      // From "all", only next is possible (to the first release).
+      const target = at < 0 ? (dir > 0 ? 0 : -1) : at + dir;
+      b.disabled = target < 0 || target >= stops.length;
+      if (!b.disabled) b.dataset.ghStop = stops[target];
+      return b;
+    };
+    const chip = (value, text, count) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = PAGER_CLASS + "__chip" + (sel === value ? " " + PAGER_CLASS + "__chip--on" : "");
+      b.dataset.ghStop = sel === value ? "" : value; // clicking the active chip clears it
+      b.textContent = text + " ";
+      const n = document.createElement("span");
+      n.textContent = String(count);
+      b.append(n);
+      return b;
+    };
+
+    if (st.done && versions.length) {
+      strip.append(step("\u2039", -1, "Previous release"));
+      versions.forEach((v) => strip.append(chip(v, v, counts.get(v))));
+      if (none) strip.append(chip(NONE, "no release", none));
+      strip.append(step("\u203a", 1, "Next release"));
+      if (st.partial) {
+        const p = document.createElement("span");
+        p.className = PAGER_CLASS + "__note";
+        p.textContent = "first " + MAX_PAGES * 25 + " issues only";
+        strip.append(p);
+      }
+    }
+    if (note) {
+      const p = document.createElement("span");
+      p.className = PAGER_CLASS + "__note";
+      p.textContent = "Release sort applies to this page only";
+      strip.append(p);
+    }
+    strip._versions = versions;
+    if (old) old.remove();
+    host.insertBefore(strip, list);
+  }
+
+  document.addEventListener(
+    "click",
+    (e) => {
+      const el = e.target.closest && e.target.closest("." + PAGER_CLASS + " button");
+      if (!el || el.disabled || el.dataset.ghStop === undefined) return;
+      e.preventDefault();
+      e.stopPropagation();
+      goToSelection(el.dataset.ghStop, el.closest("." + PAGER_CLASS)._versions);
+    },
+    true
+  );
+
   // ----------------------------------------------------------------- main
 
   function process() {
@@ -490,6 +679,7 @@
     alignIds(rows);
     renderReleases(rows);
     applySort(rows);
+    renderPager(rows);
     injectSortItem(rows.some((r) => releasesFor(r).length > 0));
   }
 

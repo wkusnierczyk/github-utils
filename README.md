@@ -55,9 +55,24 @@ When any issue in view has a release label, **Release** is added to GitHub's *So
   so `0.9.1` comes before `0.10.0`. Ties are ordered by issue number in the same direction.
 - Issues without a release always go last, in either direction.
 - It reorders the rows on the current page only. GitHub paginates, so other pages are not
-  affected.
+  affected; the release pager below covers moving between releases.
 - Choosing any other sort hands control back to GitHub. The choice is remembered per tab and
   page, so it survives the reload from clicking a release.
+
+### Release pager
+
+On a repo's issue or PR list, if any issue in the query has a release label, a strip appears
+above the list: one chip per release with its issue count, plus **no release** for the rest.
+
+- Click a chip to filter by it (`label:release:X`); click the active chip to clear it.
+  **no release** excludes every known release label.
+- The arrows step to the previous or next release, in version order, with "no release" last.
+- The counts come from reading every page of the current query in the background (release
+  labels only, up to 40 pages / 1,000 issues, four requests at a time). Each stop is an ordinary
+  GitHub filter, so the list itself stays GitHub's own.
+- GitHub search can't order or page by label, so there is no true release-ordered pagination.
+  When *Release* sort is on and the list has more than one page, the strip says it applies to
+  this page only.
 
 ### General
 
