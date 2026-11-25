@@ -1,0 +1,9 @@
+.gh-issue-id {
+  display: inline-block;
+  margin-right: 6px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--fgColor-default, #1f2328);
+  white-space: nowrap;
+  user-select: text;
+}

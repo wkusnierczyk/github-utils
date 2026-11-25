@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "github-utils",
+  "version": "1.0.0",
+  "description": "Small utilities for GitHub. Currently: shows issue and PR numbers at the front of each list row, between the status icon and the title.",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://github.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
