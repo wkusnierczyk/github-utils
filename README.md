@@ -13,7 +13,7 @@ Small utilities for GitHub issue and PR lists, as a Chrome extension (Manifest V
 | 5 | Label columns | issue and PR lists |
 | 6 | Sort by label criterion | issue and PR lists |
 | 7 | Value list with counts above the table | a repo's issue and PR lists |
-| 8 | User-defined label criteria (setting) | options page |
+| 8 | User-defined label criteria: add, edit, reorder, enable or disable, pick what to show | options page |
 
 ### Ids
 
@@ -40,17 +40,17 @@ name is added after the title (`owner/repo` if owners differ). Single-repo proje
 A criterion picks out one kind of label, e.g. `release:0.1.0`, `worker:agent`,
 `category:G-features`. Each criterion (see Settings) adds:
 
-- **A column** (if its *Column* switch is on) between the id and the title, in settings order, aligned as set (right by default). Rows without a
-  value stay empty; a criterion with no value in view reserves no space. Not shown in project
-  views, which don't expose labels.
-- **Click-to-filter**: click a value to add `label:...` to the search bar, click again to
-  clear it. Filters of other criteria are kept.
+- **A column** (if its *Column* switch is on) between the id and the title, in settings order,
+  aligned as set (right by default). Rows without a value stay empty; a criterion with no
+  value in view reserves no space. Not shown in project views, which don't expose labels.
+- **Click-to-filter** on the column's values: click one to add `label:...` to the search bar,
+  click again to clear it. Filters of other criteria are kept.
 - **A *Sort by* entry**: *Oldest* sorts lowest first, *Newest* highest first. Values compare
   numerically per dot-separated part (`0.9.1` < `0.10.0`), otherwise as text. Issues without
   a value go last. It reorders the current page only; any other sort hands control back to
   GitHub.
-- **A list above the table** (if its *Value list* switch is on), one row per criterion in a two-column
-  table (name right-aligned, values left-aligned): a chip per value with its issue count,
+- **A list above the table** (if its *Value list* switch is on), one row per criterion in a
+  two-column table (name right-aligned, values left-aligned): a chip per value with its issue count,
   plus "no X", with arrows to step through them. It counts by reading all pages of the query
   in the background (labels only, up to 1,000 issues). Each stop is an ordinary GitHub
   filter, since search can't order or page by label. When the criterion's sort is on and the
