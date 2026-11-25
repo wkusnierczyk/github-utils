@@ -49,7 +49,8 @@ A criterion picks out one kind of label, e.g. `release:0.1.0`, `worker:agent`,
   numerically per dot-separated part (`0.9.1` < `0.10.0`), otherwise as text. Issues without
   a value go last. It reorders the current page only; any other sort hands control back to
   GitHub.
-- **A list above the table** (optional per criterion): a chip per value with its issue count,
+- **A list above the table** (optional per criterion), one row per criterion in a two-column
+  table (name right-aligned, values left-aligned): a chip per value with its issue count,
   plus "no X", with arrows to step through them. It counts by reading all pages of the query
   in the background (labels only, up to 1,000 issues). Each stop is an ordinary GitHub
   filter, since search can't order or page by label. When the criterion's sort is on and the

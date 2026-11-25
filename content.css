@@ -60,15 +60,35 @@
   white-space: nowrap;
 }
 
-/* Release pager strip above the issue list. */
+/* Label value lists above the issue list: a two-column table, criterion name
+   (right-aligned) and its values (left-aligned). Each strip's two cells sit directly
+   in the grid, so every row's values start at the same x. */
+.gh-pagers {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  font-size: 12px;
+}
 .gh-label-pager {
+  display: contents;
+}
+.gh-label-pager__name,
+.gh-label-pager__values {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--borderColor-muted, #d1d9e0);
+}
+.gh-label-pager__name {
+  padding-left: 16px;
+  padding-right: 10px;
+  text-align: right;
+  font-weight: 600;
+  line-height: 20px;
+}
+.gh-label-pager__values {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--borderColor-muted, #d1d9e0);
-  font-size: 12px;
+  padding-right: 16px;
 }
 .gh-label-pager__chip,
 .gh-label-pager__step {
@@ -104,8 +124,4 @@
 .gh-label-pager__note {
   margin-left: auto;
   color: var(--fgColor-muted, #59636e);
-}
-.gh-label-pager__name {
-  font-weight: 600;
-  margin-right: 2px;
 }

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "github-utils",
-  "version": "1.8.0",
+  "version": "1.8.1",
   "description": "Small utilities for GitHub issue and PR lists: ids in front of titles, label-based columns, sorting and filtering, and less clutter.",
   "content_scripts": [
     {

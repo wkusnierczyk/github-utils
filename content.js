@@ -741,15 +741,17 @@
       b.append(el("span", "", String(count)));
       return b;
     };
-    strip.append(el("span", "name", c.name));
+    // Two cells (name, values) laid out by the .gh-pagers grid.
+    const values = el("div", "values");
     if (showList) {
-      strip.append(step("‹", -1, "Previous " + c.name));
-      labels.forEach((l) => strip.append(chip(l, valueOf(c, l), counts.get(l))));
-      if (none) strip.append(chip(NONE, "no " + c.name, none));
-      strip.append(step("›", 1, "Next " + c.name));
-      if (partial) strip.append(el("span", "note", "first " + MAX_PAGES * 25 + " issues only"));
+      values.append(step("‹", -1, "Previous " + c.name));
+      labels.forEach((l) => values.append(chip(l, valueOf(c, l), counts.get(l))));
+      if (none) values.append(chip(NONE, "no " + c.name, none));
+      values.append(step("›", 1, "Next " + c.name));
+      if (partial) values.append(el("span", "note", "first " + MAX_PAGES * 25 + " issues only"));
     }
-    if (note) strip.append(el("span", "note", c.name + " sort applies to this page only"));
+    if (note) values.append(el("span", "note", c.name + " sort applies to this page only"));
+    strip.append(el("div", "name", c.name), values);
     return strip;
   }
 
