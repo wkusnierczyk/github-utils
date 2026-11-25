@@ -33,13 +33,44 @@
   cursor: default;
 }
 
-.gh-issue-col:not(:empty):hover {
+/* The value, in the label's own colours; only as wide as its text. */
+.gh-issue-col__pill {
+  display: inline-block;
+  box-sizing: border-box;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: 2em;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+/* No label colour known: plain text. */
+.gh-issue-col__pill--plain {
+  padding: 0;
+  border: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+}
+
+.gh-issue-col:not(:empty):hover .gh-issue-col__pill {
+  filter: brightness(0.9);
+}
+
+.gh-issue-col:not(:empty):hover .gh-issue-col__pill--plain {
+  filter: none;
   text-decoration: underline;
 }
 
-/* More than one matching label on the issue: the lowest is shown, in red. */
+/* More than one matching label on the issue: the lowest is shown, marked in red. */
 .gh-issue-col--multi {
   color: var(--fgColor-danger, #d1242f);
+}
+
+.gh-issue-col--multi .gh-issue-col__pill:not(.gh-issue-col__pill--plain) {
+  border-color: var(--fgColor-danger, #d1242f) !important;
 }
 
 /* GitHub's own id after the title, hidden where we show ours in front. */

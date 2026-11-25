@@ -10,7 +10,7 @@ Small utilities for GitHub issue and PR lists, as a Chrome extension (Manifest V
 | 2 | GitHub's trailing id hidden | project tables |
 | 3 | Redundant repo name hidden | a repo's own lists |
 | 4 | Repo name badge | multi-repo project tables |
-| 5 | Label columns | issue and PR lists |
+| 5 | Label columns, values as pills in the label's colours | issue and PR lists |
 | 6 | Sort by label criterion | issue and PR lists |
 | 7 | Value list with counts above the table | a repo's issue and PR lists |
 | 8 | User-defined label criteria: add, edit, reorder, enable or disable, pick what to show | options page |
@@ -41,8 +41,10 @@ A criterion picks out one kind of label, e.g. `release:0.1.0`, `worker:agent`,
 `category:G-features`. Each criterion (see Settings) adds:
 
 - **A column** (if its *Column* switch is on) between the id and the title, in settings order,
-  aligned as set (right by default). Rows without a value stay empty; a criterion with no
-  value in view reserves no space. Not shown in project views, which don't expose labels.
+  aligned as set (right by default). Each value is a pill in the original label's colours
+  (light and dark themes), only as wide as its text. Rows without a value stay empty; a
+  criterion with no value in view reserves no space. Not shown in project views, which don't
+  expose labels.
 - **Click-to-filter** on the column's values: click one to add `label:...` to the search bar,
   click again to clear it. Filters of other criteria are kept.
 - **A *Sort by* entry**: *Oldest* sorts lowest first, *Newest* highest first. Values compare
@@ -56,7 +58,7 @@ A criterion picks out one kind of label, e.g. `release:0.1.0`, `worker:agent`,
   filter, since search can't order or page by label. When the criterion's sort is on and the
   list has several pages, the strip notes that it applies to this page only.
 
-An issue with several labels of one criterion shows the lowest, in red; hover for all.
+An issue with several labels of one criterion shows the lowest, outlined in red; hover for all.
 
 ## Settings
 

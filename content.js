@@ -270,6 +270,9 @@
 
   const pageKey = () => location.pathname + location.search;
 
+  // "owner/repo/label name" -> hex colour (no #), as GitHub embeds it with each label.
+  const labelColors = new Map();
+
   function embeddedJson(doc) {
     const script = doc.querySelector('script[data-target="react-app.embeddedData"]');
     if (!script) return null;
@@ -299,6 +302,7 @@
         let any = false;
         for (const l of o.labels) {
           const name = (l && l.name) || "";
+          if (repo && l && l.color) labelColors.set(repo.toLowerCase() + "/" + name, l.color);
           for (const c of criteria) {
             if (valueOf(c, name) === null) continue;
             (found[c.name] = found[c.name] || []).push(name);
@@ -358,6 +362,50 @@
 
   // -------------------------------------------------------------- columns
 
+  // Whether the page has a dark theme, judged from its background colour.
+  function isDark() {
+    const bg = getComputedStyle(document.body).backgroundColor;
+    const m = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?/.exec(bg);
+    if (!m || (m[4] !== undefined && Number(m[4]) === 0)) return false; // transparent: light
+    return (0.2126 * m[1] + 0.7152 * m[2] + 0.0722 * m[3]) / 255 < 0.5;
+  }
+
+  // Pill colours for a label's hex colour, following GitHub's own label styling:
+  // light theme = the colour as background with black or white text; dark theme = a
+  // translucent background with the colour, lightened if needed, as text and border.
+  function pillStyle(hex, dark) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
+    if (!m) return null;
+    const n = parseInt(m[1], 16);
+    const r = (n >> 16) & 255;
+    const g = (n >> 8) & 255;
+    const b = n & 255;
+    const perceived = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+    const THRESHOLD = 0.453;
+    const darkLabel = perceived < THRESHOLD;
+    if (!dark) {
+      return { backgroundColor: "#" + m[1], color: darkLabel ? "#fff" : "#000", borderColor: "transparent" };
+    }
+    const mx = Math.max(r, g, b) / 255;
+    const mn = Math.min(r, g, b) / 255;
+    const l = (mx + mn) / 2;
+    const d = mx - mn;
+    const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
+    let h = 0;
+    if (d !== 0) {
+      if (mx === r / 255) h = ((g - b) / 255 / d + 6) % 6;
+      else if (mx === g / 255) h = (b - r) / 255 / d + 2;
+      else h = (r - g) / 255 / d + 4;
+    }
+    const L = Math.max(0, Math.min(100, l * 100 + (darkLabel ? (THRESHOLD - perceived) * 100 : 0)));
+    const hsl = Math.round(h * 60) + ", " + Math.round(s * 100) + "%, " + Math.round(L) + "%";
+    return {
+      backgroundColor: "rgba(" + r + ", " + g + ", " + b + ", 0.18)",
+      color: "hsl(" + hsl + ")",
+      borderColor: "hsla(" + hsl + ", 0.3)",
+    };
+  }
+
   const findCol = (row, name) =>
     [...row.querySelectorAll("." + COL_CLASS)].find((s) => s.dataset.ghCrit === name);
 
@@ -377,6 +425,7 @@
 
   function renderColumns(rows) {
     ensurePageData();
+    const dark = isDark();
     const known = new Set(criteria.filter((c) => c.column).map((c) => c.name));
     document.querySelectorAll("." + COL_CLASS).forEach((el) => {
       if (!known.has(el.dataset.ghCrit)) el.remove(); // removed, disabled or column off
@@ -402,7 +451,23 @@
           const lowest = labels[0] || "";
           const text = lowest ? valueOf(c, lowest) : "";
           const multi = labels.length > 1;
-          if (span.textContent !== text) span.textContent = text;
+          // The value is a pill in the label's own colours, as wide as its text; the
+          // column's alignment positions it.
+          const color = lowest ? labelColors.get(e.repo.toLowerCase() + "/" + lowest) || "" : "";
+          const look = text + "|" + color + "|" + dark;
+          if (span.dataset.ghLook !== look) {
+            span.dataset.ghLook = look;
+            span.textContent = "";
+            if (text) {
+              const pill = document.createElement("span");
+              pill.className = COL_CLASS + "__pill";
+              pill.textContent = text;
+              const st = pillStyle(color, dark);
+              if (st) Object.assign(pill.style, st);
+              else pill.classList.add(COL_CLASS + "__pill--plain");
+              span.append(pill);
+            }
+          }
           if (span.dataset.ghAlign !== c.align) span.dataset.ghAlign = c.align;
           if (span.dataset.ghLabel !== lowest) span.dataset.ghLabel = lowest;
           span.classList.toggle(COL_CLASS + "--multi", multi);
