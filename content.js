@@ -190,7 +190,15 @@
   // (off keeps the spec but hides the criterion everywhere), column (the column before
   // the title) and pager (the list of values above the table).
   // Each criterion gets a column before the title, a "Sort by" entry and click-to-filter.
+  //
+  // Setting: presets, named sets of criteria bound to repos by shell patterns
+  // ("owner/repo", "owner/*", "*/*", "w*/*github*"; * does not cross the "/").
+  // On a repo's list page, the enabled presets whose patterns match that repo decide
+  // which criteria apply: the union of their criteria, whatever each criterion's own
+  // Enabled switch says. With no matching preset (or off a repo page), the criteria
+  // whose Enabled switch is on apply.
   const SETTING_KEY = "criteria";
+  const PRESETS_KEY = "presets";
   const LEGACY_KEY = "releaseLabelPattern"; // the single release pattern, before 1.7
   const DEFAULT_CRITERIA = [
     {
@@ -204,13 +212,14 @@
     },
   ];
   const ALIGNMENTS = ["left", "center", "right"];
-  let criteria = []; // enabled ones, compiled: { name, re, separator, align, column, pager }
+  let allCriteria = []; // compiled: { name, re, separator, align, enabled, column, pager }
+  let presets = []; // compiled: { enabled, repos: [RegExp], names: Set(lowercase) }
+  let criteria = []; // the ones in effect for the repo in view
 
   function compileCriteria(list) {
     const out = [];
     const names = new Set();
     for (const c of Array.isArray(list) ? list : []) {
-      if (c && c.enabled === false) continue; // disabled: spec kept in settings only
       const name = String((c && c.name) || "").trim();
       if (!name || names.has(name.toLowerCase())) continue;
       let re;
@@ -225,11 +234,64 @@
         re,
         separator: String((c && c.separator) ?? ""),
         align: ALIGNMENTS.includes(c && c.align) ? c.align : "right",
+        enabled: !(c && c.enabled === false),
         column: !(c && c.column === false),
         pager: !!(c && c.pager),
       });
     }
     return out;
+  }
+
+  // Shell pattern -> RegExp, case-insensitive: * = any characters but "/", ? = one.
+  const globRe = (g) =>
+    new RegExp(
+      "^" +
+        String(g).trim().replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^/]*").replace(/\?/g, "[^/]") +
+        "$",
+      "i"
+    );
+
+  function compilePresets(list) {
+    const out = [];
+    for (const p of Array.isArray(list) ? list : []) {
+      if (!p) continue;
+      out.push({
+        enabled: p.enabled !== false,
+        repos: (Array.isArray(p.repos) ? p.repos : [])
+          .map((g) => String(g).trim())
+          .filter(Boolean)
+          .map(globRe),
+        names: new Set((Array.isArray(p.criteria) ? p.criteria : []).map((n) => String(n).trim().toLowerCase())),
+      });
+    }
+    return out;
+  }
+
+  // The repo whose list page is in view ("owner/repo"), or "".
+  const repoInView = () => {
+    const m = REPO_PAGE_RE.exec(location.pathname);
+    return m ? m[1] : "";
+  };
+
+  // Which criteria apply here: see the presets comment above.
+  function criteriaInEffect() {
+    const repo = repoInView();
+    const matched = repo ? presets.filter((p) => p.enabled && p.repos.some((re) => re.test(repo))) : [];
+    if (!matched.length) return allCriteria.filter((c) => c.enabled);
+    const names = new Set(matched.flatMap((p) => [...p.names]));
+    return allCriteria.filter((c) => names.has(c.name.toLowerCase()));
+  }
+
+  let effectiveSig = null;
+  // Recompute the criteria in effect (the repo may have changed); true if they did.
+  function syncCriteria() {
+    const list = criteriaInEffect();
+    const sig = list.map((c) => c.name).join("\n");
+    if (sig === effectiveSig) return false;
+    effectiveSig = sig;
+    criteria = list;
+    document.querySelectorAll("." + PAGERS_CLASS).forEach((el) => el.remove());
+    return true;
   }
 
   // What is shown for a label under criterion c, or null if it doesn't match.
@@ -873,6 +935,7 @@
   // ----------------------------------------------------------------- main
 
   function process() {
+    syncCriteria();
     if (sort.path !== location.pathname) {
       sort.path = location.pathname;
       setSort(null); // new page: forget the sort
@@ -911,24 +974,25 @@
     });
   }
 
-  // Apply (new) criteria: forget everything read with the old ones.
-  function applyCriteria(list, initial) {
-    criteria = compileCriteria(list);
+  // Apply (new) settings: forget everything read with the old ones.
+  function applySettings(raw, initial) {
+    allCriteria = compileCriteria(raw.criteria);
+    presets = compilePresets(raw.presets);
+    effectiveSig = null;
+    syncCriteria();
     pageData.clear();
     loaded.clear();
     // On first load, reuse the data embedded in this page: no extra request.
     if (initial) pageData.set(pageKey(), parseEmbedded(document));
-    document.querySelectorAll("." + PAGERS_CLASS).forEach((el) => el.remove());
     schedule();
   }
 
   // Settings from storage; the old single release pattern becomes a "release" entry.
-  function criteriaFrom(v) {
-    if (v && Array.isArray(v[SETTING_KEY])) return v[SETTING_KEY];
-    if (v && v[LEGACY_KEY]) {
-      return [{ name: "release", pattern: v[LEGACY_KEY], pager: true }];
-    }
-    return DEFAULT_CRITERIA;
+  function settingsFrom(v) {
+    let list = DEFAULT_CRITERIA;
+    if (v && Array.isArray(v[SETTING_KEY])) list = v[SETTING_KEY];
+    else if (v && v[LEGACY_KEY]) list = [{ name: "release", pattern: v[LEGACY_KEY], pager: true }];
+    return { criteria: list, presets: v && Array.isArray(v[PRESETS_KEY]) ? v[PRESETS_KEY] : [] };
   }
 
   function start() {
@@ -939,16 +1003,19 @@
   }
 
   try {
-    chrome.storage.sync.get([SETTING_KEY, LEGACY_KEY], (v) => {
-      applyCriteria(criteriaFrom(v), true);
+    let stored = {};
+    chrome.storage.sync.get([SETTING_KEY, PRESETS_KEY, LEGACY_KEY], (v) => {
+      stored = v || {};
+      applySettings(settingsFrom(stored), true);
       start();
     });
     chrome.storage.onChanged.addListener((changes, area) => {
-      if (area !== "sync" || !(SETTING_KEY in changes)) return;
-      applyCriteria(criteriaFrom({ [SETTING_KEY]: changes[SETTING_KEY].newValue }), false);
+      if (area !== "sync" || !(SETTING_KEY in changes || PRESETS_KEY in changes)) return;
+      for (const k of [SETTING_KEY, PRESETS_KEY]) if (k in changes) stored[k] = changes[k].newValue;
+      applySettings(settingsFrom(stored), false);
     });
   } catch {
-    applyCriteria(DEFAULT_CRITERIA, true); // no extension storage: defaults
+    applySettings(settingsFrom({}), true); // no extension storage: defaults
     start();
   }
 })();

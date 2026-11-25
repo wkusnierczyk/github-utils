@@ -16,6 +16,19 @@
   .error { color: #cf222e; margin: 4px 0 0; }
   #ok { color: #1a7f37; }
   fieldset.off { opacity: 0.6; }
+  .matrix-wrap { overflow-x: auto; margin-top: 12px; }
+  table { border-collapse: collapse; }
+  #matrix th, #matrix td { border: 1px solid #d1d9e0; padding: 6px 10px; vertical-align: top; }
+  #matrix thead th { min-width: 14em; text-align: left; font-weight: normal; background: #f6f8fa; }
+  #matrix thead th.corner { min-width: 0; color: #59636e; font-size: 12px; vertical-align: bottom; }
+  #matrix tbody th { text-align: right; font-weight: 600; white-space: nowrap; background: #f6f8fa; }
+  #matrix tbody th small { font-weight: normal; color: #59636e; }
+  #matrix tbody td { text-align: center; }
+  #matrix thead input[type=text], #matrix thead textarea { width: 100%; box-sizing: border-box; font: 13px ui-monospace, monospace; margin: 2px 0; }
+  #matrix thead .bar { justify-content: flex-start; }
+  #matrix thead th.off { opacity: 0.6; }
+  code { font: 12px ui-monospace, monospace; background: #f6f8fa; padding: 0 3px; border-radius: 3px; }
+  #io { color: #59636e; }
   .result { font-family: ui-monospace, monospace; color: #59636e; }
 </style>
 <h1>github-utils</h1>
@@ -35,9 +48,43 @@
 <div class="row"><button id="add" type="button">Add criterion</button></div>
 <p class="error" id="error"></p>
 
+<h2>Presets</h2>
+<p class="hint">
+  A preset is a named set of criteria bound to repos. Tick the criteria a preset contains
+  (a criterion can be in any number of presets) and list the repos it applies to, one shell
+  pattern per line: <code>owner/repo</code>, <code>owner/*</code>, <code>*/*</code>,
+  <code>w*/*github*</code> (<code>*</code> matches any characters except <code>/</code>,
+  <code>?</code> one character; case-insensitive).
+</p>
+<p class="hint">
+  On a repo's issue list, the enabled presets that match the repo decide what applies: the
+  criteria they contain, whatever each criterion's own <em>Enabled</em> switch says. With no
+  matching preset, the criteria whose <em>Enabled</em> switch is on apply.
+</p>
+<div class="matrix-wrap">
+  <table id="matrix">
+    <thead><tr id="mhead"><th class="corner">criteria \ presets</th></tr></thead>
+    <tbody id="mbody"></tbody>
+  </table>
+</div>
+<div class="row"><button id="padd" type="button">Add preset</button></div>
+<p class="error" id="perror"></p>
+
 <div class="row">
   <button id="save" type="button">Save</button>
   <button id="reset" type="button">Reset to default</button>
   <span id="ok"></span>
+</div>
+
+<h2>Export and import</h2>
+<p class="hint">
+  Export writes the settings shown above (saved or not) to a JSON file. Import loads a file
+  into the page; review it and click Save to apply.
+</p>
+<div class="row">
+  <button id="export" type="button">Export settings</button>
+  <button id="import" type="button">Import settings</button>
+  <input id="file" type="file" accept="application/json,.json" hidden>
+  <span id="io"></span>
 </div>
 <script src="options.js"></script>

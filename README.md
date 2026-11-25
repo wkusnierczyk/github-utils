@@ -14,6 +14,8 @@ Small utilities for GitHub issue and PR lists, as a Chrome extension (Manifest V
 | 6 | Sort by label criterion | issue and PR lists |
 | 7 | Value list with counts above the table | a repo's issue and PR lists |
 | 8 | User-defined label criteria: add, edit, reorder, enable or disable, pick what to show | options page |
+| 9 | Presets: named sets of criteria bound to repos by shell patterns | options page |
+| 10 | Export and import of settings | options page |
 
 ### Ids
 
@@ -87,6 +89,34 @@ What is shown for a matching label:
 The default is a single `release` criterion with the one-group pattern above. Settings sync
 across your Chrome profile and apply to open GitHub tabs at once. A pattern from an earlier
 version (single release setting) becomes the `release` criterion.
+
+### Presets
+
+Different repos label issues differently. A preset is a named set of criteria bound to repos,
+so the right criteria apply when you move between repos.
+
+- Presets are edited as a matrix: criteria as rows, presets as columns, a checkbox per pair.
+  A criterion can be in any number of presets.
+- Each preset has a name (unique), an enabled switch, and the repos it applies to, one shell
+  pattern per line: `owner/repo`, `owner/*`, `*/*`, `w*/*github*`. `*` matches any characters
+  except `/`, `?` one character; case-insensitive.
+- On a repo's issue or PR list, the enabled presets matching that repo decide what applies:
+  the union of their criteria, **whatever each criterion's own Enabled switch says**. With no
+  matching preset, or on a page that isn't a single repo's list (dashboard, projects), the
+  criteria whose Enabled switch is on apply.
+
+Example: criteria `a` (enabled) and `b` (disabled); preset 1 = `a`, `b`; preset 2 = `b`. A repo
+matching preset 1 gets `a` and `b`; one matching preset 2 gets `b`; one matching neither gets `a`.
+A matching preset with no criteria turns everything off for that repo.
+
+Renaming a criterion keeps it in its presets; removing it takes it out of them.
+
+### Export and import
+
+**Export settings** writes the criteria and presets shown on the page to
+`github-utils-settings.json`. **Import settings** loads such a file into the page for review;
+nothing changes until you click **Save**. A file that isn't valid settings is rejected without
+changing anything.
 
 ## Install (unpacked)
 
